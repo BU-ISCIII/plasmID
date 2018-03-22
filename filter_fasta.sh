@@ -89,6 +89,7 @@ while getopts $options opt; do
 			;;
 		f )
 			file_for_filtering=$OPTARG
+			bash check_mandatory_files.sh $input_file
 			file_option=true
 			;;
         h )
@@ -122,32 +123,31 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-bash check_mandatory_files.sh $input_file 
+bash check_mandatory_files.sh $input_file
 
-
-if [ $file_option = true ]; then
+#MANAGE OUTPUT DIRECTORY
+if [ $file_option = true ] && [ ! $output_dir ]; then
 	output_dir=$(dirname $file_for_filtering)
-	file_name=$(basename $file_for_filtering | cut -d. -f1)
+	echo "Output directory is" $output_dir
 	mkdir -p $output_dir
-else 
-
-#$file_for_filtering
-
-if [ ! $output_dir ]; then
-	output_dir=$(dirname $input_file)
-	#echo "Default output directory is" $output_dir
-	mkdir -p $output_dir
+elif [ $file_option = false ] && [ ! $output_dir ]; then
+ 	echo "please, provide an output directory" $output_dir
+ 	exit 1
 else
-	#echo "Output directory is" $output_dir
+	echo "Output directory is" $output_dir
 	mkdir -p $output_dir
 fi
 
-if [ ! $file_name ]; then
-	file_name=$(basename $input_file | cut -d. -f1)
+#MANAGE FILE NAME
+if [ $file_option = true ] && [ ! $file_name ]; then
+	file_name=$(echo $(basename $file_for_filtering))
+elif [ $file_option = false ] && [ ! $file_name  ]; then
+ 	file_name=$terms_for_filtering #First term supplied by -l
+else 
+	echo "File name is=" $file_name
 fi
 
-
-
+#PROCESS REGULAR EXPRESSION TERMS
 if [ $term_option = true ] && [ $file_option = false ]; then
 
 	list_terms_listed=$(for term in "${terms_for_filtering[@]}"; do echo "$term"; done) #process terms into list
@@ -168,7 +168,8 @@ else
 	final_list_terms_regexp=$(echo $list_terms_regexp_term"|"$list_terms_regexp_file) #concat all regexp into one
 fi
 
-
+#AWK SCRIPT THAT FILTER SEQUENCES#
+##################################
 echo "$(date)"
 echo "Filtering terms on file" $(basename $input_file)
 seq_number_prev=$(cat $input_file | grep ">" | wc -l)
@@ -176,14 +177,13 @@ seq_number_prev=$(cat $input_file | grep ">" | wc -l)
 awk '
 	BEGIN {RS=">"} 
 	'"${negative_filter}"'/'"${final_list_terms_regexp}"'/ {print ">"$0}
-	' $input_file > $output_dir/$file_name"_filtered.fasta"
+	' $input_file \
+	> $output_dir/$file_name"_term.fasta"
 
 echo "$(date)"
 echo "DONE Filtering terms on file" $(basename $input_file)
-seq_number_post=$(cat $output_dir/$file_name_filtered.fasta | grep ">" | wc -l)
-echo "File with filtered sequences can be found in" $output_dir/$file_name"_filtered.fasta"
+seq_number_post=$(cat $output_dir/$file_name"_term.fasta" | grep ">" | wc -l)
+echo "File with filtered sequences can be found in" $output_dir/$file_name"_term.fasta"
 
 echo "Previous number of sequences=" $seq_number_prev
 echo "Post number of sequences=" $seq_number_post
-
-echo $file_name

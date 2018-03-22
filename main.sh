@@ -232,3 +232,5 @@ echo "Mapping $sample in $group Group "
 
 bash filter_fasta.sh -i ../../../REFERENCES/PLASMIDS/plasmid.all.genomic.dec212017.fasta_psi_90 -f TEST/ABA622/mapping/ABA622.coverage_adapted_filtered_70
 
+#ABA622.coverage_adapted_filtered_70_term.fasta
+
