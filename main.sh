@@ -224,13 +224,26 @@ echo "Mapping $sample in $group Group "
 
  #ABA622.coverage
 
- bash adapt_filter_coverage.sh -i TEST/ABA622/mapping/ABA622.coverage -c 70
+ bash adapt_filter_coverage.sh -i TEST/ABA622/mapping/ABA622.coverage -c 50
 
 
  #ABA622.coverage_adapted
- #ABA622.coverage_adapted_filtered_70  
+ #ABA622.coverage_adapted_filtered_50  
 
-bash filter_fasta.sh -i ../../../REFERENCES/PLASMIDS/plasmid.all.genomic.dec212017.fasta_psi_90 -f TEST/ABA622/mapping/ABA622.coverage_adapted_filtered_70
+bash filter_fasta.sh -i ../../../REFERENCES/PLASMIDS/plasmid.all.genomic.dec212017.fasta_psi_90 -f TEST/ABA622/mapping/ABA622.coverage_adapted_filtered_50
 
-#ABA622.coverage_adapted_filtered_70_term.fasta
+#ABA622.coverage_adapted_filtered_50_term.fasta
+
+bash cdhit_cluster.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_filtered_50_term.fasta -c 0.8 -M 5000 -T 0
+
+#ABA622.coverage_adapted_filtered_50_term.fasta_80 >> ARCHIVO FINAL DE PLÁSMIDOS FILTRADO Y CLUSTERIZADO
+########################################################################################################
+#ABA622.coverage_adapted_filtered_50_term.fasta_80.clstr
+
+bash process_cluster_output.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_filtered_50_term.fasta_80 -b TEST/ABA622/mapping/ABA622.coverage_adapted -c 50
+
+#ABA622.coverage_adapted_clustered
+#ABA622.coverage_adapted_clustered_percentage
+#ABA622.coverage_adapted_clustered_ac >> PROBABLY NOT NEEDED
+############################################################
 

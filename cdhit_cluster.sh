@@ -14,6 +14,17 @@ VERSION=1.0
 #REVISION:
 #DESCRIPTION:Script that uses cd-hit/psi-cd-hit to clusterize a FASTA file
 #
+#DOCUMENTATION
+#
+#
+#Compare floats in BASH
+#
+#if [ $(echo "$cluster_cutoff > 0.7"|bc -l) -eq 1 ]; then
+#	echo "YES"
+#else
+#	echo "NO"
+#fi
+#
 #-d length of description in .clstr file, default 20. if set to 0, 
 #	it takes the fasta defline and stops at first space
 #-s length difference cutoff, default 0.0
@@ -53,7 +64,6 @@ usage : $0 <-i inputfile(FASTA)> [-o <directory>] [-n <filename>] [-c <percentag
 		[-T <threads>] [-g group_name] [-s <int>] [-M <int>][-C <(0|1)>] [-G <(0|1)>] [-b <blast_prog>] [p] [-v] [-h]
 
 	-i input file in sorted BAM format
-	-o output directory (optional)
 	-c percentage threshold to cluster, default 0.8
 	-M max available memory (Mbyte), default 400
 	-n file name
@@ -67,16 +77,14 @@ usage : $0 <-i inputfile(FASTA)> [-o <directory>] [-n <filename>] [-c <percentag
 	-v version
 	-h display usage message
 
+
+Output directory is the same as input directory
+
 example: cdhit_cluster -i ecoli.fasta -c 0.9 -M 50000 -T 0
 		 
 
 EOF
 }
-
-#cd-hit-est -i $plasmidMappedFasta -o $plasmidMappedFasta"_80" -c $thresholdCdHit -n 4 -d 0 -s 0.8 -B 1 -M 50000 -T 0
-
-#psi-cd-hit.pl -i $sample".ac.covered.fasta" -o $sample".ac.covered.fasta_80" -c $thresholdCdHit -G 1 -g 1 -prog blastn -circle 1
-
 
 #================================================================
 # OPTION_PROCESSING
@@ -92,7 +100,7 @@ fi
 cwd="$(pwd)"
 group="NO_GROUP"
 input_file="Input_file"
-cluster_percentage=0.8
+cluster_cutoff=0.8
 max_memory=400
 length_cutoff=0.8
 cd_hit_command=cd-hit-est
@@ -100,6 +108,7 @@ is_circle=1
 global_psi_cd_hit=1
 psi_cd_hit_program=blastn
 word_size=0
+threads=0
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
@@ -109,11 +118,9 @@ while getopts $options opt; do
 		i )
 			input_file=$OPTARG
 			;;
-		o )
-			output_dir=$OPTARG
-			;;
+		
 		c )
-			cluster_percentage=$OPTARG
+			cluster_cutoff=$OPTARG
 			;;
 		g)
 			group=$OPTARG
@@ -135,6 +142,9 @@ while getopts $options opt; do
           	;;
         G)			
           	global_psi_cd_hit=$OPTARG
+          	;;
+        T)			
+          	threads=$OPTARG
           	;;
         b)			
           	psi_cd_hit_program=$OPTARG
@@ -170,43 +180,35 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-#bash check_mandatory_files.sh $input_file
+bash check_mandatory_files.sh $input_file
 
 bash check_dependencies.sh cd-hit-est psi-cd-hit.pl
-echo "PREV"
-echo "word size= " $word_size
-echo "cluster%= " $cluster_percentage
 
 
-if [ "$cluster_percentage" -gt "0.7" ]; then
-	echo "si"
-else
-	echo "NOO"
-fi
 
-
-<<Z
 # Set word size (parameter -n for cd-hit) as author recomends
-if [[ "$cluster_percentage" -gt 0.7  &&  "$cluster_percentage" -le 1 ]]; then
+#according to clustering percentage
+
+
+cluster_percentage=$(echo "$cluster_cutoff * 100"|bc -l)
+cluster_percentage=${cluster_percentage%.*} #Remove float value
+
+
+if [[ "$cluster_percentage" -gt 70  &&  "$cluster_percentage" -le 100 ]]; then
 	word_size=5
-elif [[ "$cluster_percentage" -gt "0.6"  &&  "$cluster_percentage" -le "0.7" ]]; then
+elif [[ "$cluster_percentage" -gt 60  &&  "$cluster_percentage" -le 70 ]]; then
 	word_size=4
-elif [[ "$cluster_percentage" -gt "0.5"  &&  "$cluster_percentage" -le "0.6" ]]; then
+elif [[ "$cluster_percentage" -gt 50  &&  "$cluster_percentage" -le 60 ]]; then
 	word_size=3
-elif [[ "$cluster_percentage" -gt "0.4"  &&  "$cluster_percentage" -le "0.5" ]]; then
+elif [[ "$cluster_percentage" -ge 40  &&  "$cluster_percentage" -le 50 ]]; then
 	word_size=2
 else
-	echo "please introduce a valid cluster percentage value"
+	echo "please introduce a valid cluster percentage value between 0.4 and 1"
 	exit 1
 fi
-Z
-echo "word size= " $word_size
-echo "cluster%= " $cluster_percentage
-#-n 5 for thresholds 0.7 ~ 1.0
-#-n 4 for thresholds 0.6 ~ 0.7
-#-n 3 for thresholds 0.5 ~ 0.6
-#-n 2 for thresholds 0.4 ~ 0.5
-<<C
+
+
+
 if [ ! $output_dir ]; then
 	output_dir=$(dirname $input_file)
 	echo "Default output directory is" $output_dir
@@ -216,78 +218,40 @@ else
 	mkdir -p $output_dir
 fi
 
-if [ ! $filename ]; then
-	filename=$(basename $input_file | cut -d. -f1)
+if [ ! $file_name ]; then
+	file_name=$(basename $input_file)
+	echo "filename is" $file_name
 fi
 
 
+##CD-HIT EXECUTION
 
-if [ $positional = true ]; then 
-	if [ -f $imageDir/$sample".plasmid.bedgraph" ];then \
-		echo "Found a bedgraph file for sample" $sample;
-		echo "Omitting bedgraph step"
-	else
-		echo "$(date)"
-		echo "Obtaining coverage coordinates from sequences"
+echo "$(date)"
+echo "Clustering sequences with identity" $cluster_percentage"% or higher"
+echo "Using" $cd_hit_command "with file" $input_file
+seq_number_prev_clstr=$(cat $input_file | grep ">" | wc -l)
 
-		bedtools genomecov -ibam $input_file -bga -max $max_coverage > $output_dir/$filename".bedgraph"
+cd $(dirname $input_file)
 
-		echo "$(date)"
-		echo "DONE obtaining coverage coordinates from sequences"
-	fi
+if [ -f $output_dir/$file_name""_""$cluster_percentage ]; then \
+	echo "Found a clustered file for sample" $file_name;
+	echo "Omitting clustering process calculation"
+	exit 1
 else
-
-
-	bash check_mandatory_files.sh $database
-
-	if [ -f $database".length" ]; then
-		echo "Found length file for" $(basename $database)
-		echo "Omitting length calculation"
+	if [ $cd_hit_command  == "psi-cd-hit.pl" ]; then 
+		$cd_hit_command -i $(basename $input_file) -o $file_name""_""$cluster_percentage -c $cluster_cutoff -G $global_psi_cd_hit -g 1 -prog $psi_cd_hit_program -circle $is_circle
+	
 	else
-		echo "$(date)"
-		echo "Creating a length file for" $(basename $database)
-		bash calculate_seqlen.sh -r -i $database > $database".length"
-	fi
 
-	if [ -f $output_dir/$filename".coverage" ];then \
-		echo "Found a coverage file for sample" $sample;
-		echo "Omitting coverage calculation"
-	else
-		echo "$(date)"
-		echo "Calculating coverage for every position that mapped $filename"
-
-		bedtools genomecov -ibam $input_file -g $database".length" > $output_dir/$filename".coverage"
-
-		echo "$(date)"
-		echo "DONE Calculating coverage for every plamid that mapped $sample"
+		$cd_hit_command -i $(basename $input_file) -o $file_name""_""$cluster_percentage -c $cluster_cutoff -n $word_size -d 0 -s $length_cutoff -B 1 -M $max_memory -T $threads
 	fi
 fi
 
-C
+seq_number_post_clstr=$(cat $$file_name""_""$cluster_percentage | grep ">" | wc -l)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+echo "$(date)"
+echo "done Clustering sequences with identity" $cluster_percentage"% or higher"
+echo "fasta file can be found in" $output_dir/$file_name""_""$cluster_percentage
+echo "Previous number of sequences=" $seq_number_prev_clstr
+echo "Number of sequences after clustering=" $seq_number_post_clstr
+cd $cwd

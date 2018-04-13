@@ -127,12 +127,13 @@ else
 	mkdir -p $output_dir
 fi
 
+
 if [ ! $filename ]; then
 	filename=$(basename $input_file | cut -d. -f1)
 fi
 
 
-if [ $input_file"_adapted" ]; then
+if [ -f $input_file"_adapted" ]; then
 	echo "Found previous" $(basename $input_file"_adapted")", removing it"
 	rm $input_file"_adapted"
 fi
@@ -153,6 +154,7 @@ awk '
 	 {print $1}
 }
 	' $input_file"_adapted" > $input_file$suffix
+
 
 echo "$(date)"
 echo "Done filtering sequences with" $coverage_cutoff_input"% and greater coverage"
