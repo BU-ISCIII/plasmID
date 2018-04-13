@@ -15,6 +15,7 @@ VERSION=1.0
 #CREATED: 21 March 2018
 #REVISION:
 #		22 March 2018: Handle output directory by default the same as -f file
+#		13 April 2018: Include -G option to filter any file by term with both file or term
 #DESCRIPTION:Script that extract sequences by term, either by key or file with a list
 #AKNOWLEDGE: 
 #		-Multiple arguments in one flag: https://stackoverflow.com/questions/7529856/retrieving-multiple-arguments-for-a-single-option-using-getopts-in-bash
@@ -31,13 +32,14 @@ usage() {
 
 Filter_fasta script that extract sequences by term, either by key or file with a list
 
-usage : $0 <-i file.fasta> <(-l term1 -l term2 -l term3 | -f file)> [-n <filename>] [-o <directory>] [N] [-v] [-h]
+usage : $0 <-i file.fasta> <(-l term1 -l term2 -l term3 | -f file)> [-n <filename>] [-o <directory>] [-G] [-N] [-v] [-h]
 
 	-i fasta file to filter
 	-o output directory (optional). By default the file is replaced in the same location
 	-n file name (optional). By default is the same as -f file with .fasta extension
 	-l list of key terms separated by space
 	-N Use term to discard sequences with terms (Negative filter)
+	-G General filter: filter any file with a list of keys
 	-f file with a list of terms to filter
 	-v version
 	-h display usage message
@@ -62,13 +64,14 @@ fi
 #DECLARE FLAGS AND VARIABLES
 term_option=false
 file_option=false
+general_filter=false
 negative_filter=""
 cwd="$(pwd)"
 input_file="Input_file"
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
-options=":i:o:n:l:f:Nvh"
+options=":i:o:n:l:f:GNvh"
 while getopts $options opt; do
 	case $opt in
 		i )
@@ -82,6 +85,9 @@ while getopts $options opt; do
 			;;
 		N )
 			negative_filter="!"
+			;;
+		G )
+			general_filter=true
 			;;
 		l )
 			terms_for_filtering+=($OPTARG)
@@ -125,6 +131,12 @@ shift $((OPTIND-1))
 
 bash check_mandatory_files.sh $input_file
 
+
+if [ $general_filter = true ]; then
+	file_name=$(basename $input_file)
+	output_dir=$(dirname $input_file)
+fi
+
 #MANAGE OUTPUT DIRECTORY
 if [ $file_option = true ] && [ ! $output_dir ]; then
 	output_dir=$(dirname $file_for_filtering)
@@ -134,7 +146,7 @@ elif [ $file_option = false ] && [ ! $output_dir ]; then
  	echo "please, provide an output directory" $output_dir
  	exit 1
 else
-	echo "Output directory is" $output_dir
+	echo "Output directory is=" $output_dir
 	mkdir -p $output_dir
 fi
 
@@ -170,20 +182,37 @@ fi
 
 #AWK SCRIPT THAT FILTER SEQUENCES#
 ##################################
-echo "$(date)"
-echo "Filtering terms on file" $(basename $input_file)
-seq_number_prev=$(cat $input_file | grep ">" | wc -l)
 
-awk '
-	BEGIN {RS=">"} 
-	'"${negative_filter}"'/'"${final_list_terms_regexp}"'/ {print ">"$0}
-	' $input_file \
-	> $output_dir/$file_name"_term.fasta"
+if [ $general_filter = true ]; then
 
-echo "$(date)"
-echo "DONE Filtering terms on file" $(basename $input_file)
-seq_number_post=$(cat $output_dir/$file_name"_term.fasta" | grep ">" | wc -l)
-echo "File with filtered sequences can be found in" $output_dir/$file_name"_term.fasta"
+	echo "$(date)"
+	echo "General filtering terms on file" $(basename $input_file)
 
-echo "Previous number of sequences=" $seq_number_prev
-echo "Post number of sequences=" $seq_number_post
+	awk '
+		/'"${final_list_terms_regexp}"'/ {print $0}
+		' $input_file \
+		> $output_dir/$file_name"_term"
+
+	echo "$(date)"
+	echo "Done general filtering terms on file" $(basename $input_file)
+	echo "File with filtered lines can be found in" $output_dir/$file_name"_term"
+
+else
+	echo "$(date)"
+	echo "Filtering terms on file" $(basename $input_file)
+	seq_number_prev=$(cat $input_file | grep ">" | wc -l)
+
+	awk '
+		BEGIN {RS=">"} 
+		'"${negative_filter}"'/'"${final_list_terms_regexp}"'/ {print ">"$0}
+		' $input_file \
+		> $output_dir/$file_name"_term.fasta"
+
+	echo "$(date)"
+	echo "DONE Filtering terms on file" $(basename $input_file)
+	seq_number_post=$(cat $output_dir/$file_name"_term.fasta" | grep ">" | wc -l)
+	echo "File with filtered sequences can be found in" $output_dir/$file_name"_term.fasta"
+
+	echo "Previous number of sequences=" $seq_number_prev
+	echo "Post number of sequences=" $seq_number_post
+fi

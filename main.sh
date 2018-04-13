@@ -247,3 +247,20 @@ bash process_cluster_output.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_fi
 #ABA622.coverage_adapted_clustered_ac >> PROBABLY NOT NEEDED
 ############################################################
 
+###############################################################################################################################################
+######################## DONE WITH MAPPING AND CLUSTERING #####################################################################################
+###############################################################################################################################################
+
+bash build_karyotype.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_clustered -K 50 -k 50 -o TEST/ABA622/data
+
+#group/sample/data
+#ABA622.karyotype_individual.txt
+#ABA622.karyotype_individual.txt
+
+./get_coverage.sh -i TEST/ABA622/mapping/ABA622.sorted.bam -p -o TEST/ABA622/data/
+
+#ABA622.bedgraph
+
+./filter_fasta.sh -i TEST/ABA622/data/ABA622.bedgraph -f TEST/ABA622/mapping/ABA622.coverage_adapted_clustered_ac -G
+
+#ABA622.bedgraph_term
