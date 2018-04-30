@@ -63,7 +63,7 @@ Cdhit_cluster script uses cd-hit/psi-cd-hit to clusterize a FASTA file
 usage : $0 <-i inputfile(FASTA)> [-o <directory>] [-n <filename>] [-c <percentage>]
 		[-T <threads>] [-g group_name] [-s <int>] [-M <int>][-C <(0|1)>] [-G <(0|1)>] [-b <blast_prog>] [p] [-v] [-h]
 
-	-i input file in sorted BAM format
+	-i input file in FASTA format
 	-c percentage threshold to cluster, default 0.8
 	-M max available memory (Mbyte), default 400
 	-n file name
