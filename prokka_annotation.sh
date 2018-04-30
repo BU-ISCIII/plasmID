@@ -20,6 +20,9 @@ VERSION=1.0
 # gnl|center|locustag_01
 # gnl|center|locustag_02
 #
+#TO DO:
+#Handle cleaning
+#
 #================================================================
 # END_OF_HEADER
 #================================================================
@@ -31,17 +34,17 @@ usage() {
 
 Prokka_annotation is a script that uses prokka to annotate a FASTA file
 
-usage : $0 <-i inputfile(FASTA)> <-p prefix> [-o <directory>] [-n <filename>] [-k <kingdom>]
-		[-T <threads>] [-g group_name][-G genus] [-S species] [-v] [-h]
+usage : $0 <-i inputfile(FASTA)> <-p prefix> [-o <directory>] [-k <kingdom>]
+		[-T <threads>] [-g group_name][-G genus] [-S species] [-c] [-v] [-h]
 
 	-i input file in FASTA format
 	-o output directory
 	-p prefix for sample identification (mandatory) and outpùt file name
-	-n file name
 	-k kingdom (Bacteria by default)
 	-g group name (optional). If unset, samples will be gathered in NO_GROUP group
 	-G sample genus in case is known by user
 	-S sample species in case is known by user
+	-c clean:remove files other than gff and renamed fasta
 	-T number of threads
 	-v version
 	-h display usage message
@@ -70,11 +73,15 @@ fi
 cwd="$(pwd)"
 group="NO_GROUP"
 input_file="Input_file"
+kingdom="Bacteria"
+clean=false
+genus=""
+species=""
 threads=1
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
-options=":i:o:p:n:k:g:G:S:T:vh"
+options=":i:o:p:k:g:G:S:T:cvh"
 while getopts $options opt; do
 	case $opt in
 		i )
@@ -88,10 +95,6 @@ while getopts $options opt; do
 			prefix=$OPTARG
 			file_name=$OPTARG
 			;;
-		M )
-			max_memory=$OPTARG
-			;;
-		
 		k )			
           	kingdom=$OPTARG
           	;;
@@ -103,6 +106,9 @@ while getopts $options opt; do
           	;;
         G)			
           	genus=$OPTARG
+          	;;
+		c )			
+          	clean=true
           	;;
         T)			
           	threads=$OPTARG
@@ -143,7 +149,10 @@ bash check_mandatory_files.sh $input_file
 
 bash check_dependencies.sh prokka
 
-
+if [ ! $prefix ]; then
+	echo "please provide a prefix"
+	exit 1
+fi
 
 if [ ! $output_dir ]; then
 	output_dir=$(dirname $input_file)
@@ -160,75 +169,28 @@ if [ ! $file_name ]; then
 fi
 
 
-##CD-HIT EXECUTION
+##PROKKA EXECUTION
 
 echo "$(date)"
-echo "Annotating "
-echo "Using" $cd_hit_command "with file" $input_file
-seq_number_prev_clstr=$(cat $input_file | grep ">" | wc -l)
+echo "Annotating $input_file with prokka"
 
-cd $(dirname $input_file)
-
-if [ -f $output_dir/$file_name""_""$cluster_percentage ]; then \
-	echo "Found a clustered file for sample" $file_name;
-	echo "Omitting clustering process calculation"
-	exit 1
-else
-	if [ $cd_hit_command  == "psi-cd-hit.pl" ]; then 
-		$cd_hit_command -i $(basename $input_file) -o $file_name""_""$cluster_percentage -c $cluster_cutoff -G $global_psi_cd_hit -g 1 -prog $psi_cd_hit_program -circle $is_circle
-	
-	else
-
-		$cd_hit_command -i $(basename $input_file) -o $file_name""_""$cluster_percentage -c $cluster_cutoff -n $word_size -d 0 -s $length_cutoff -B 1 -M $max_memory -T $threads
-	fi
-fi
-
-seq_number_post_clstr=$(cat $$file_name""_""$cluster_percentage | grep ">" | wc -l)
+prokka --force --outdir $output_dir \
+--prefix $prefix \
+--addgenes \
+--kingdom $kingdom \
+--genus $genus \
+--species $species \
+--usegenus \
+--centre BU-ISCIII \
+--locustag $prefix \
+--compliant \
+--cpus $threads \
+$input_file
 
 echo "$(date)"
-echo "done Clustering sequences with identity" $cluster_percentage"% or higher"
-echo "fasta file can be found in" $output_dir/$file_name""_""$cluster_percentage
-echo "Previous number of sequences=" $seq_number_prev_clstr
-echo "Number of sequences after clustering=" $seq_number_post_clstr
-cd $cwd
+echo "done annotating $input_file with prokka"
 
-
-
-
-#contigFile=$(find $contigDir/ -name "contigs.fasta" -type f | awk '/'"${sample}"'/ ')
-contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| awk '/'"${sample}"'/' | awk 'NR==1')
-#2> /dev/null avoid permission denied error pront for non contig directories
-#contigFile=$nadalesDir/A_257_index.final.scaffolds.fasta
-if [ -f $imageDir/$sample".fna" -a -f $imageDir/$sample".gff"  ];then \
-
-	echo "Found an annotation file for sample" $sample;
-	echo "Omitting annotation with prokka"
-
-elif [ ! -f $contigFile ]; then \
-
-	echo "ERROR: File with contigs was not found for sample" $sample;
-	echo "Exit"
-	exit
-
-else
-
-	echo -e "contig file found at:" $contigFile
-	echo -e "##### Anotating contigs with Prokka \n"
-
-	prokka --force --outdir $imageDir \
-	--prefix $sample \
-	--addgenes \
-	--kingdom Bacteria \
-	--usegenus \
-	--centre CNM \
-	--locustag $sample \
-	--compliant \
-	--cpus 5 \
-	$contigFile
-
-	echo "##### DONE Anotating contigs with Prokka"
-
+if [ clean = true ]; then
+	echo "Removing unwanted files"
+	rm $output_dir/$prefix.ll
 fi
-
-#--genus Klebsiella \
-#--species pneumoniae \
