@@ -163,7 +163,7 @@ fi
 ##CD-HIT EXECUTION
 
 echo "$(date)"
-echo "Clustering sequences with identity" $cluster_percentage"% or higher"
+echo "Annotating "
 echo "Using" $cd_hit_command "with file" $input_file
 seq_number_prev_clstr=$(cat $input_file | grep ">" | wc -l)
 
