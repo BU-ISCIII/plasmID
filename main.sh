@@ -264,3 +264,5 @@ bash build_karyotype.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_clustered
 ./filter_fasta.sh -i TEST/ABA622/data/ABA622.bedgraph -f TEST/ABA622/mapping/ABA622.coverage_adapted_clustered_ac -G
 
 #ABA622.bedgraph_term
+
+contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| awk '/'"${sample}"'/' | awk 'NR==1')
