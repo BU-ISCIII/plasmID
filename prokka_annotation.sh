@@ -10,7 +10,7 @@ set -e
 #CENTRE:BU-ISCIII
 #AUTHOR: Pedro J. Sola
 VERSION=1.0 
-#CREATED: 30 May 2018
+#CREATED: 30 April 2018
 #REVISION:
 #DESCRIPTION:Script that uses prokka to annotate a FASTA file
 #
@@ -39,7 +39,7 @@ usage : $0 <-i inputfile(FASTA)> <-p prefix> [-o <directory>] [-k <kingdom>]
 
 	-i input file in FASTA format
 	-o output directory
-	-p prefix for sample identification (mandatory) and outpùt file name
+	-p prefix for sample identification (mandatory) and output file name
 	-k kingdom (Bacteria by default)
 	-g group name (optional). If unset, samples will be gathered in NO_GROUP group
 	-G sample genus in case is known by user
