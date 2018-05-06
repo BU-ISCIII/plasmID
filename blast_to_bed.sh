@@ -14,7 +14,9 @@ set -e
 #AUTHOR: Pedro J. Sola
 VERSION=1.0 
 #CREATED: 4 May 2018
-#REVISION:
+#REVISION: 
+#06 May 2018: add id optiopn in bed output
+#
 #DESCRIPTION:blast_to_bed script obtain a BED file with coordinates of local blast alignments matching some given conditions
 #================================================================
 # END_OF_HEADER
@@ -65,6 +67,8 @@ database_delimiter="_"
 query_delimiter="_"
 unique=false
 suffix=""
+id_circos=false
+id_output=""id="database_name[length(database_name)]"
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
@@ -107,6 +111,10 @@ while getopts $options opt; do
         u )
 			unique=true
             suffix=".unique.tmp"
+			;;
+        i)
+			id_circos=true
+            id_output=",id="
 			;;
         h )
 		  	usage
@@ -173,7 +181,7 @@ awk '
         split($2, query_name, ""'"${query_delimiter}"'"");
     };
     ($3 > '"${blast_id_cutoff}"')&&(($4/$14)>'"${blast_len_percentage}"')&&($4 >'"${blast_len_alignment}"')
-    {print database_name[length(database_name)], $7, $8, query_name[1]}' \
+    {print database_name[length(database_name)], $7, $8, query_name[1]'"$id_output"'}' \
 > $output_dir/$file_name".bed"$suffix
 
 
