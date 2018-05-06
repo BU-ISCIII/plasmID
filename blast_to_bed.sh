@@ -13,10 +13,9 @@ set -e
 #CENTRE:BU-ISCIII
 #AUTHOR: Pedro J. Sola
 VERSION=1.0 
-#CREATED: 12 April 2018
+#CREATED: 4 May 2018
 #REVISION:
-#DESCRIPTION:process_cluster_output script obtain a list of ac from fasta, and estract their coverage value from a coverage file
-
+#DESCRIPTION:blast_to_bed script obtain a BED file with coordinates of local blast alignments matching some given conditions
 #================================================================
 # END_OF_HEADER
 #================================================================
@@ -26,19 +25,22 @@ VERSION=1.0
 usage() {
 	cat << EOF
 
-process_cluster_output script obtain a list of ac from fasta, and estract their coverage value from a coverage file
+blast_to_bed is a script than obtain a BED file with coordinates of local blast alignments matching some given conditions
 
-usage : $0 <-i inputfile(.fasta)> <-b coverage_file> [-o <directory>] [-c <int(0-100)>] [-s <suffix>] [-v] [-h]
+usage : $0 <-i inputfile(.blast)> <-b coverage_file> [-o <directory>] [-c <int(0-100)>] [-s <suffix>] [-u] [-v] [-h]
 
 	-i input file 
-	-b file with coverage info
+	-b blast identity cutoff (0 - 100), default 90
+    -l blast length percentage cutoff (0 - 100), default 20, use 90 for genes
+    -L blast length alignment cutoff, default 0, use 200 or 500 for contigs
 	-o output directory (optional). By default the file is replaced in the same location
-	-c percentage value to filter >= values. If not supplied, all records will be outputted
-	-s string to ad at the end of the outputted file (list of accession numbers)
+	-d database chraracter delimiter, default "_"
+	-q database chraracter delimiter, default "_"
+    -u unique. Outputs only one query entry per database entry
 	-v version
 	-h display usage message
 
-example: process_cluster_output.sh -i ecoli_clustered.fasta_70 -b ecoli.coverage
+example: blast_to_bed.sh -i ecoli_prefix.blast -b 80 -l 50 -q "|"
 
 EOF
 }
@@ -56,33 +58,55 @@ fi
 #DECLARE FLAGS AND VARIABLES
 cwd="$(pwd)"
 input_file="Input_file"
-coverage_cutoff_input=100
+blast_id_cutoff=90
+blast_len_percentage=20
+blast_len_alignment=0
+database_delimiter="_"
+query_delimiter="_"
+unique=false
+suffix=""
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
-options=":i:b:o:c:s:vh"
+options=":i:b:q:d:o:l:L:uvh"
 while getopts $options opt; do
 	case $opt in
 		i )
 			input_file=$OPTARG
 			;;
 		b )
-			coverage_file=$OPTARG
-			;;
-		o )
-			output_dir=$OPTARG
-			;;
-		c )
 			if [ $OPTARG -lt 0 ] || [ $OPTARG -gt 100 ]; then
 				echo "please, provide a percentage between 0 and 100"
 				usage
 				exit 1
 			else
-				coverage_cutoff_input=$OPTARG
+				blast_id_cutoff=$OPTARG
 			fi
 			;;
-		s )
-			suffix=$OPTARG
+		o )
+			output_dir=$OPTARG
+			;;
+		l )
+			if [ $OPTARG -lt 0 ] || [ $OPTARG -gt 100 ]; then
+				echo "please, provide a percentage between 0 and 100"
+				usage
+				exit 1
+			else
+				blast_len_percentage=$OPTARG
+			fi
+			;;
+		L )
+			blast_len_alignment=$OPTARG
+			;;
+        d )
+			database_delimiter=$OPTARG
+			;;
+        q )
+			query_delimiter=$OPTARG
+			;;
+        u )
+			unique=true
+            suffix=".unique.tmp"
 			;;
         h )
 		  	usage
@@ -117,8 +141,7 @@ shift $((OPTIND-1))
 
 bash check_mandatory_files.sh $input_file
 
-suffix="_clustered"
-coverage_cutoff=$(echo "(1 - ($coverage_cutoff_input/100))" | bc -l)
+blast_len_percentage_value=$(echo "($coverage_cutoff_input/100)" | bc -l)
 
 echo "coverage" $coverage_cutoff
 
@@ -133,34 +156,33 @@ fi
 
 
 if [ ! $file_name ]; then
-	file_name=$(basename $input_file)
-	coverage_name=$(basename $coverage_file)
+	file_name=$(basename $input_file | cut -d. -f1)
 fi
 
 echo "$(date)"
-echo "extracting coverage info from clustered sequences in" $file_name
-
-ac_input_file=$(cat $input_file | grep ">" | awk '{gsub(">","");print $1}')
-
-for i in $ac_input_file ;do
-	awk '
-		/^'"$i"'/
-		' $coverage_file
-done > $output_dir/$coverage_name$suffix
+echo "Adapting blast to bed using" $(basename $input_file) "with:"
+echo "Blast identity=" $blast_id_cutoff
+echo "Min length aligned=" $blast_len_alignment
+echo "Min len percentage=" $blast_len_percentage
 
 
+cat $input_file |\
 awk '
-	{if ($2 == 0 && $5 < '"${coverage_cutoff}"')
-		{print $1}}
-	' $output_dir/$coverage_name$suffix > $output_dir/$coverage_name$suffix"_ac"
+    {OFS="\t";
+        split($1, database_name, "'"${database_delimiter}"'");
+        split($2, query_name, ""'"${query_delimiter}"'"");
+    };
+    ($3 > '"${blast_id_cutoff}"')&&(($4/$14)>'"${blast_len_percentage}"')&&($4 >'"${blast_len_alignment}"')
+    {print database_name[length(database_name)], $7, $8, query_name[1]}' \
+> $output_dir/$file_name".bed"$suffix
 
 
-awk '
-	{if ($2 == 0 && $5 < '"${coverage_cutoff}"')
-	 	{print $1, ((1 - $5)*100)}
-	}
-	' $output_dir/$coverage_name$suffix > $output_dir/$coverage_name$suffix"_percentage"
+if [ unique == "true"] then;
+    awk '
+        (!x[$2$3])
+    ' \
+    $output_dir/$file_name".bed"$suffix > $output_dir/$file_name".bed"
 
 echo "$(date)"
-echo "DONE extracting coverage info from clustered sequences in" $file_name
-echo "Info can be found at" $coverage_name$suffix"_*"
+echo "DONE adapting blast to bed
+echo "File can be found at" $output_dir/$file_name".bed"
