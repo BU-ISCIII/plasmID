@@ -2,7 +2,7 @@
 
 # Exit immediately if a pipeline, which may consist of a single simple command, a list, 
 #or a compound command returns a non-zero status: If errors are not handled by user
-set -e
+#set -e
 #set -x
 
 #=============================================================
@@ -29,20 +29,24 @@ usage() {
 
 blast_to_bed is a script than obtain a BED file with coordinates of local blast alignments matching some given conditions
 
-usage : $0 <-i inputfile(.blast)> <-b coverage_file> [-o <directory>] [-c <int(0-100)>] [-s <suffix>] [-u] [-v] [-h]
+usage : $0 <-i inputfile(.blast)> <-b coverage_file> [-o <directory>] [-b <int(0-100)>] [-l <int(0-100)>] [-L <int>]
+		[-p <prefix>] [-d <delimiter>] [-D (l|r)] [-q <delimiter>] [-Q (l|r)] [-u] [-v] [-h]
 
 	-i input file 
 	-b blast identity cutoff (0 - 100), default 90
-    -l blast length percentage cutoff (0 - 100), default 20, use 90 for genes
-    -L blast length alignment cutoff, default 0, use 200 or 500 for contigs
+	-l blast length percentage cutoff (0 - 100), default 20, use 90 for genes
+	-L blast length alignment cutoff, default 0, use 200 or 500 for contigs
 	-o output directory (optional). By default the file is replaced in the same location
-	-d database chraracter delimiter, default "_"
 	-q database chraracter delimiter, default "_"
-    -u unique. Outputs only one query entry per database entry
+	-Q query field to retrieve (l=left, r=right), default left
+	-d database chraracter delimiter, default "_"
+	-D database field to retrieve (l=left, r=right), default right
+	-C contig mode
+	-u unique. Outputs only one query entry per database entry
 	-v version
 	-h display usage message
 
-example: blast_to_bed.sh -i ecoli_prefix.blast -b 80 -l 50 -q "|"
+example: blast_to_bed.sh -i ecoli_prefix.blast -b 80 -l 50 -q - -Q r
 
 EOF
 }
@@ -61,18 +65,20 @@ fi
 cwd="$(pwd)"
 input_file="Input_file"
 blast_id_cutoff=90
-blast_len_percentage=20
+blast_len_percentage=10
 blast_len_alignment=0
 database_delimiter="_"
+database_field=r
 query_delimiter="_"
+query_field=l
 unique=false
 suffix=""
 id_circos=false
-id_output=""id="database_name[length(database_name)]"
+id_output=""
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
-options=":i:b:q:d:o:l:L:uvh"
+options=":i:b:q:Q:d:D:o:l:L:Iuvh"
 while getopts $options opt; do
 	case $opt in
 		i )
@@ -81,7 +87,6 @@ while getopts $options opt; do
 		b )
 			if [ $OPTARG -lt 0 ] || [ $OPTARG -gt 100 ]; then
 				echo "please, provide a percentage between 0 and 100"
-				usage
 				exit 1
 			else
 				blast_id_cutoff=$OPTARG
@@ -93,7 +98,6 @@ while getopts $options opt; do
 		l )
 			if [ $OPTARG -lt 0 ] || [ $OPTARG -gt 100 ]; then
 				echo "please, provide a percentage between 0 and 100"
-				usage
 				exit 1
 			else
 				blast_len_percentage=$OPTARG
@@ -105,16 +109,22 @@ while getopts $options opt; do
         d )
 			database_delimiter=$OPTARG
 			;;
+		D )
+			database_field=$OPTARG
+			;;
         q )
 			query_delimiter=$OPTARG
+			;;
+		Q )
+			query_field=$OPTARG
 			;;
         u )
 			unique=true
             suffix=".unique.tmp"
 			;;
-        i)
+        I)
 			id_circos=true
-            id_output=",id="
+            id_output=",\"id=\"database_name[length(database_name)]"
 			;;
         h )
 		  	usage
@@ -149,9 +159,10 @@ shift $((OPTIND-1))
 
 bash check_mandatory_files.sh $input_file
 
-blast_len_percentage_value=$(echo "($coverage_cutoff_input/100)" | bc -l)
 
-echo "coverage" $coverage_cutoff
+blast_len_percentage_value=$(echo "($blast_len_percentage/100)" | bc -l)
+#blast_len_percentage_decimal=$(echo $blast_len_percentage_value | sed 's/0\{1,\}$//')
+
 
 if [ ! $output_dir ]; then
 	output_dir=$(dirname $input_file)
@@ -167,6 +178,38 @@ if [ ! $file_name ]; then
 	file_name=$(basename $input_file | cut -d. -f1)
 fi
 
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>DDBB" $database_field "XXXXXXXXXXQQRR" $query_field
+##CHECK FIELDS TO RETRIEVE
+
+if [ "$database_field" != "l" ] || [ "$database_field" != "r" ]; then
+
+	if [ $database_field == l ]; then
+		database_field="1"
+	else
+		database_field="length(database_name)"
+	fi
+	
+else
+	echo "Please introduce 0 or 1 for database"
+	exit 1
+fi
+
+if [ $query_field != "l" ] || [ $query_field != "r" ]; then
+
+	if [ $query_field == l ]; then
+		query_field="1"
+	else
+		query_field="length(query_name)"
+	fi
+	
+else
+
+	echo "Please introduce 0 or 1 for query"
+	exit 1
+fi
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>DDBB" $database_field "XXXXXXXXXXQQRR" $query_field
+
 echo "$(date)"
 echo "Adapting blast to bed using" $(basename $input_file) "with:"
 echo "Blast identity=" $blast_id_cutoff
@@ -176,21 +219,22 @@ echo "Min len percentage=" $blast_len_percentage
 
 cat $input_file |\
 awk '
-    {OFS="\t";
-        split($1, database_name, "'"${database_delimiter}"'");
-        split($2, query_name, ""'"${query_delimiter}"'"");
-    };
-    ($3 > '"${blast_id_cutoff}"')&&(($4/$14)>'"${blast_len_percentage}"')&&($4 >'"${blast_len_alignment}"')
-    {print database_name[length(database_name)], $7, $8, query_name[1]'"$id_output"'}' \
+	{OFS="\t"
+	split($2, database_name, "'"${database_delimiter}"'")
+	split($1, query_name, "'"${query_delimiter}"'")}
+	(($3 > '"${blast_id_cutoff}"')&&(($4/$14) > '"${blast_len_percentage_value}"')&&($4 > '"${blast_len_alignment}"')) \
+	{print query_name['"$query_field"'], $7, $8, database_name['"$database_field"']'"$id_output"'}
+	' \
 > $output_dir/$file_name".bed"$suffix
 
 
-if [ unique == "true"] then;
+if [ "$unique" == "true" ]; then
     awk '
-        (!x[$2$3])
-    ' \
-    $output_dir/$file_name".bed"$suffix > $output_dir/$file_name".bed"
+        (!x[$1$4]++)
+    ' $output_dir/$file_name".bed"$suffix \
+> $output_dir/$file_name".bed"
+fi
 
 echo "$(date)"
-echo "DONE adapting blast to bed
+echo "DONE adapting blast to bed"
 echo "File can be found at" $output_dir/$file_name".bed"

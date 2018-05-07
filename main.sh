@@ -266,3 +266,13 @@ bash build_karyotype.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_clustered
 #ABA622.bedgraph_term
 
 contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| awk '/'"${sample}"'/' | awk 'NR==1')
+
+/prokka_annotation.sh -i ../../ASSEMBLY/ACIN_first/ABA622/scaffolds.fasta -p ABA622 -O TEST/ABA622/data/ -c
+
+#ABA622.fna
+#ABA622.gff
+
+./blast_align.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_clustered_ac_term.fasta -d TEST/ABA622/data/ABA622.fna -o TEST/ABA622/data/ -p plasmids
+
+
+#ABA622.plasmids.blast

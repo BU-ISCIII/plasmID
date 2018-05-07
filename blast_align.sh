@@ -155,11 +155,11 @@ bash check_mandatory_files.sh $input_file $database
 bash check_dependencies.sh blastn
 
 if [ ! $prefix ]; then
-	echo "please provide a prefix"
+	echo "please provide a prefix to identify this blast analysis"
 	exit 1
 fi
 
-if [ $OPTARG -eq "prot" ] || [ $OPTARG -eq "nucl" ]; then
+if [ $database_type == "prot" ] || [ $database_type == "nucl" ]; then
 	echo "database type selected as" $database_type
 else
 	echo "please provide a proper database type"
@@ -182,16 +182,17 @@ if [ ! $file_name ]; then
 fi
 
 database_name=$(basename $database)
+database_dir=$(dirname $database)
 
 ##BLAST EXECUTION
 
 echo "$(date)"
 echo "Blasting" $file_name "agaist" $database_name
 
-makeblastdb -in $database -out $output_dir/$database_name".blast.tmp" -dbtype $database_type
+makeblastdb -in $database -out $database_dir/$database_name".blast.tmp" -dbtype $database_type
 
 blastn -query $input_file \
--db $output_dir/$database_name".blast.tmp" \
+-db $database_dir/$database_name".blast.tmp" \
 -out $output_dir/$file_name"."$prefix".blast" \
 -evalue $evalue \
 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen slen"

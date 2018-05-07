@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+#set -e
 
 #=============================================================
 # HEADER
@@ -190,7 +190,18 @@ $input_file
 echo "$(date)"
 echo "done annotating $input_file with prokka"
 
-if [ clean = true ]; then
+##CLEAN FILES THAT WILL NOT BE USED IN PLASMIDID
+
+if [ $clean = true ]; then
 	echo "Removing unwanted files"
-	rm $output_dir/$prefix.ll
+	rm $output_dir/$prefix.val
+	rm $output_dir/$prefix.gbf
+	rm $output_dir/$prefix.ecn
+	rm $output_dir/$prefix.sqn
+	rm $output_dir/$prefix.tsv
+	rm $output_dir/$prefix.fsa
+	rm $output_dir/$prefix.txt
+	rm $output_dir/$prefix.tbl
+	rm $output_dir/$prefix.ffn
+	rm $output_dir/$prefix.faa
 fi
