@@ -178,10 +178,9 @@ if [ ! $file_name ]; then
 	file_name=$(basename $input_file | cut -d. -f1)
 fi
 
-echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>DDBB" $database_field "XXXXXXXXXXQQRR" $query_field
 ##CHECK FIELDS TO RETRIEVE
 
-if [ "$database_field" != "l" ] || [ "$database_field" != "r" ]; then
+if [ "$database_field" == "l" ] || [ "$database_field" == "r" ]; then
 
 	if [ $database_field == l ]; then
 		database_field="1"
@@ -190,11 +189,11 @@ if [ "$database_field" != "l" ] || [ "$database_field" != "r" ]; then
 	fi
 	
 else
-	echo "Please introduce 0 or 1 for database"
+	echo "Please introduce r or l for database"
 	exit 1
 fi
 
-if [ $query_field != "l" ] || [ $query_field != "r" ]; then
+if [ $query_field == "l" ] || [ $query_field == "r" ]; then
 
 	if [ $query_field == l ]; then
 		query_field="1"
@@ -207,8 +206,6 @@ else
 	echo "Please introduce 0 or 1 for query"
 	exit 1
 fi
-
-echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>DDBB" $database_field "XXXXXXXXXXQQRR" $query_field
 
 echo "$(date)"
 echo "Adapting blast to bed using" $(basename $input_file) "with:"
@@ -223,7 +220,7 @@ awk '
 	split($2, database_name, "'"${database_delimiter}"'")
 	split($1, query_name, "'"${query_delimiter}"'")}
 	(($3 > '"${blast_id_cutoff}"')&&(($4/$14) > '"${blast_len_percentage_value}"')&&($4 > '"${blast_len_alignment}"')) \
-	{print query_name['"$query_field"'], $7, $8, database_name['"$database_field"']'"$id_output"'}
+	{print length(database_name), query_name['"$query_field"'], $7, $8, database_name['"$database_field"']'"$id_output"'}
 	' \
 > $output_dir/$file_name".bed"$suffix
 
