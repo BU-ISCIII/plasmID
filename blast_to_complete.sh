@@ -27,13 +27,12 @@ usage() {
 
 blast_to_complete is a script that obtain  full length of sequences from blast and adapt it to circos
 
-usage : $0 <-i inputfile(.blast)> <-b coverage_file> [-o <directory>] [-b <int(0-100)>] [-l <int(0-100)>] [-L <int>]
+usage : $0 <-i inputfile(.blast)> <-b id cutoff> [-o <directory>] [-b <int(0-100)>] [-l <int(0-100)>]
 		[-p <prefix>] [-d <delimiter>] [-D (l|r)] [-q <delimiter>] [-Q (l|r)] [-I] [-u] [-v] [-h]
 
 	-i input file 
 	-b blast identity cutoff (0 - 100), default 90
 	-l blast length percentage cutoff (0 - 100), default 20, use 90 for genes
-	-L blast length alignment cutoff, default 0, use 200 or 500 for contigs
 	-o output directory (optional). By default the file is replaced in the same location
 	-q database chraracter delimiter, default "_"
 	-Q query field to retrieve (l=left, r=right), default left
@@ -81,8 +80,7 @@ fi
 cwd="$(pwd)"
 input_file="Input_file"
 blast_id_cutoff=90
-blast_len_percentage=10
-blast_len_alignment=0
+blast_len_percentage=70
 database_delimiter="_"
 database_field=r
 query_delimiter="_"
@@ -94,7 +92,7 @@ id_output=""
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
-options=":i:b:q:Q:d:D:o:l:L:Iuvh"
+options=":i:b:q:Q:d:D:o:l:Iuvh"
 while getopts $options opt; do
 	case $opt in
 		i )
@@ -119,10 +117,7 @@ while getopts $options opt; do
 				blast_len_percentage=$OPTARG
 			fi
 			;;
-		L )
-			blast_len_alignment=$OPTARG
-			;;
-        d )
+		d )
 			database_delimiter=$OPTARG
 			;;
 		D )
