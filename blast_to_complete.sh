@@ -13,11 +13,9 @@
 #CENTRE:BU-ISCIII
 #AUTHOR: Pedro J. Sola
 VERSION=1.0 
-#CREATED: 4 May 2018
-#REVISION: 
-#06 May 2018: add id optiopn in bed output
+#CREATED: 13 May 2018
 #
-#DESCRIPTION:blast_to_bed script obtain a BED file with coordinates of local blast alignments matching some given conditions
+#DESCRIPTION:blast_to_complete script obtain full length of sequences from blast and adapt it to circos
 #================================================================
 # END_OF_HEADER
 #================================================================
@@ -27,9 +25,9 @@ VERSION=1.0
 usage() {
 	cat << EOF
 
-blast_to_bed is a script than obtain a BED file with coordinates of local blast alignments matching some given conditions
+blast_to_complete is a script that obtain  full length of sequences from blast and adapt it to circos
 
-usage : $0 <-i inputfile(.blast)> <-b id cutoff> [-o <directory>] [-b <int(0-100)>] [-l <int(0-100)>] [-L <int>]
+usage : $0 <-i inputfile(.blast)> <-b coverage_file> [-o <directory>] [-b <int(0-100)>] [-l <int(0-100)>] [-L <int>]
 		[-p <prefix>] [-d <delimiter>] [-D (l|r)] [-q <delimiter>] [-Q (l|r)] [-I] [-u] [-v] [-h]
 
 	-i input file 
@@ -50,6 +48,24 @@ example: blast_to_bed.sh -i ecoli_prefix.blast -b 80 -l 50 -q - -Q r
 
 EOF
 }
+
+cat $imageDir/$sample".plasmids.blast" | awk 'BEGIN{OFS="\t"}{split($2,contigname, "_")}(($3 > '"${blastIdentityCutoff}"') && (($4/$14)>'"${minimumLengthComplete}"') && (!x[$2$1]++)){{isInverted=($8-$9);ext2=($14-$10)}; \
+{if (isInverted < 0) {pos1=$8; pos2=$7;} else {pos1 =$7;pos2=$8}; \
+{if ((isInverted < 0) && (($13 - pos2) > $9)) {coordChr2=(pos2 + $9);} else if ((isInverted < 0) && (($13 - pos2) <= $9)) {coordChr2=$13}; \
+{if ((isInverted < 0) && (ext2 <= pos1)) {coordChr1= pos1 - ext2;} else if ((isInverted < 0) && (ext2 > pos1)) {coordChr1= 1}; \
+{if ((isInverted > 0) && (pos1 > $9)) {coordChr1=(pos1 - $9);} else if ((isInverted > 0) && (pos1 <= $9)) {coordChr1=1}; \
+{if ((isInverted > 0) && (ext2 > ($13-pos2))) {coordChr2= $13;} else if ((isInverted > 0) && (ext2 <= ($13-pos2))) {coordChr2= (pos2 + ext2)}; \
+{print $1, coordChr1, coordChr2, contigname[length(contigname)], "id="$14} }}}}}}' \
+>$imageDir/$sample".plasmids.complete.coords"
+
+
+cat $imageDir/$sample".plasmids.blast" | awk 'BEGIN{OFS="\t"}{split($2,contigname, "_")}(($3 > '"${blastIdentityCutoff}"') && (($4/$14)>'"${minimumLengthComplete}"') && (!x[$2$1]++)){{isInverted=($8-$9);ext2=($14-$10)}; \
+{if (isInverted < 0) {pos1=$8; pos2=$7;} else {pos1 =$7;pos2=$8}; \
+{if ((isInverted < 0) && (($13 - pos2) < $9)) {coordChr1=1; coordChr2=($9-($13-pos2)); {print $1, coordChr1, coordChr2, contigname[length(contigname)], "id="$14}}; \
+{if ((isInverted < 0) && (ext2 > pos1)) {coordChr1=($13-(ext2-pos1)); coordChr2=$13; {print $1, coordChr1, coordChr2, contigname[length(contigname)], "id="$14}}; \
+{if ((isInverted > 0) && (pos1 < $9)) {coordChr1=($13-($9-pos1)); coordChr2=$13; {print $1, coordChr1, coordChr2, contigname[length(contigname)], "id="$14}}; \
+{if ((isInverted > 0) && (ext2 > ($13-pos2))) {coordChr1=1; coordChr2=(ext2-($13-pos2)); {print $1, coordChr1, coordChr2, contigname[length(contigname)], "id="$14}}}}}}}}' \
+>>$imageDir/$sample".plasmids.complete.coords" 
 
 #================================================================
 # OPTION_PROCESSING
@@ -219,7 +235,7 @@ awk '
 	{OFS="\t"
 	split($2, database_name, "'"${database_delimiter}"'")
 	split($1, query_name, "'"${query_delimiter}"'")}
-	(($3 > '"${blast_id_cutoff}"')&&(($4/$14) > '"${blast_len_percentage_value}"')&&($4 > '"${blast_len_alignment}"')) \
+	(($3 > '"${blast_id_cutoff}"')&&(($4/$13) > '"${blast_len_percentage_value}"')&&($4 > '"${blast_len_alignment}"')) \
 	{print query_name['"$query_field"'], $7, $8, database_name['"$database_field"']'"$id_output"'}
 	' \
 > $output_dir/$file_name".bed"$suffix

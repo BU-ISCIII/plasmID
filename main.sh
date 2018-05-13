@@ -274,5 +274,9 @@ contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| a
 
 ./blast_align.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_clustered_ac_term.fasta -d TEST/ABA622/data/ABA622.fna -o TEST/ABA622/data/ -p plasmids
 
-
 #ABA622.plasmids.blast
+
+
+./blast_to_bed.sh -i TEST/ABA622/data/ABA622.plasmids.blast -q - -d _ -D r -I
+
+#ABA622.plasmids.bed
