@@ -280,3 +280,8 @@ contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| a
 ./blast_to_bed.sh -i TEST/ABA622/data/ABA622.plasmids.blast -q - -d _ -D r -I
 
 #ABA622.plasmids.bed
+
+./blast_to_complete.sh -i TEST/ABA622/data/ABA622.plasmids.blast
+
+#ABA622.plasmids.complete
+
