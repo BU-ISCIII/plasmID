@@ -39,7 +39,6 @@ usage : $0 <-i inputfile(.blast)> <-b id cutoff> [-o <directory>] [-b <int(0-100
 	-d database chraracter delimiter, default "_"
 	-D database field to retrieve (l=left, r=right), default right
 	-I contig mode
-	-u unique. Outputs only one query entry per database entry
 	-v version
 	-h display usage message
 
@@ -61,12 +60,12 @@ fi
 cwd="$(pwd)"
 input_file="Input_file"
 blast_id_cutoff=90
-blast_len_percentage=10
+blast_len_percentage=50
 blast_len_alignment=0
 database_delimiter="_"
 database_field=r
 query_delimiter="_"
-query_field=l
+query_field=r
 unique=false
 suffix=""
 id_circos=false
@@ -117,7 +116,7 @@ while getopts $options opt; do
 			;;
         I)
 			id_circos=true
-            id_output=",\"id=\"database_name[length(database_name)]"
+            id_output=",\"id=\"query_name[length(query_name)]"
 			;;
         h )
 		  	usage
@@ -202,55 +201,47 @@ else
 fi
 
 echo "$(date)"
-echo "Adapting blast to bed using" $(basename $input_file) "with:"
+echo "Adapting blast to links using" $(basename $input_file) "with:"
 echo "Blast identity=" $blast_id_cutoff
 echo "Min len percentage=" $blast_len_percentage
 
+##Have only into account blast entries with a determine blast length
 
-#cat $input_file |\
-#awk '
-#	{OFS="\t"
-#	split($2, database_name, "'"${database_delimiter}"'")
-#	split($1, query_name, "'"${query_delimiter}"'")}
-#	(($3 > '"${blast_id_cutoff}"')&&(($4/$14) > '"${blast_len_percentage_value}"')&&($4 > '"${blast_len_alignment}"')) \
-#	{print query_name['"$query_field"'], $7, $8, database_name['"$database_field"']'"$id_output"'}
-#	' \
-#> $output_dir/$file_name".bed"$suffix
+awk '
+	(($4/$13) > '"${blast_len_percentage_value}"') && !contigPlasmid[$1$2]++ \
+	{print $1$2}
+	' $input_file \
+	> $output_dir/$file_name".dict_length_percentage"
 
-awk '(($4/$13)>'"${minimumLengthComplete}"') && !contigPlasmid[$1$2]++ {print $1$2}' $imageDir/$sample".plasmids.blast" > $imageDir/$sample".dictionary_covered.txt"
+##Obtain coordinates query --> ddbb
 
-awk 'NR==FNR{contigPlasmid[$1]=$1;next} \
-{split($1, contigname, "_"); header=$1$2}{if ((header in contigPlasmid) && ($3>90) && (($4/$13)>0.05)) print contigname[length(contigname)], $7,$8,$2,$9,$10, "id=contig_"contigname[length(contigname)]}' \
-$imageDir/$sample".dictionary_covered.txt" $imageDir/$sample".plasmids.blast" > $imageDir/$sample".plasmids.blast.links"
+awk '
+	NR==FNR{contigPlasmid[$1]=$1;next}
+	{split($2, database_name, "'"${database_delimiter}"'")
+	split($1, query_name, "'"${query_delimiter}"'")
+	header=$1$2}
+	{if ((header in contigPlasmid) && ($3>'"${blast_id_cutoff}"') && (($4/$13)>0.05)) 
+		print query_name['"$query_field"'], $7,$8,database_name['"$database_field"'],$9,$10'"$id_output"'}' \
+	$output_dir/$file_name".dict_length_percentage" $input_file \
+	> $output_dir/$file_name."links.tmp"
 
-#sample.blast.links (file with matching coordinates between coordinates in contigs and plasmids)
-#contig_1    915668  915969  NG_048025.1     1178    1476    id=contig_1
-#contig_1    123340  123574  NG_048025.1     1361    1127    id=contig_1
-#contig_2    1       121     NZ_CP010574.1   66599   66479   id=contig_2
-#contig_2    1       121     NZ_CP008930.1   122307  122187  id=contig_2
-#contig_2    1       121     NZ_CP011577.1   112628  112748  id=contig_2
+##Change coordinates from query --> ddbb to ddbb-->ddbb in order to represent them in CIRCOSS
 
-##Change coordinates from contig --> plasmid to plasmid-->plasmid in order to represent them in CIRCOSS
+awk '
+	BEGIN{OFS="\t"}
+	{
+	if($1 != savedNode)
+		{savedNode= $1; delete chr} 
+	else{for(i in chr)
+		{print $4" "$5" "$6" "chr[i]" id="savedNode}
+	}
+	chr[$4$5$6] = $4" "$5" "$6}' \
+	$output_dir/$file_name."links.tmp" \
+	> $output_dir/$file_name."links"
 
-awk 'BEGIN{OFS="\t";}{if($1 != savedNode){savedNode= $1; delete chr} else{for(i in chr){print $4" "$5" "$6" "chr[i]" id="savedNode}}chr[$4$5$6] = $4" "$5" "$6}' \
-$imageDir/$sample".plasmids.blast.links" > $imageDir/$sample".plasmids.blast.links.sorted"
-
-
-#NG_048025.1 1361 1127 NG_048025.1 1178 1476 id=contig_1
-#NZ_CP008930.1 122307 122187 NZ_CP010574.1 66599 66479 id=contig_2
-#NZ_CP011577.1 112628 112748 NZ_CP010574.1 66599 66479 id=contig_2
-#NZ_CP011577.1 112628 112748 NZ_CP008930.1 122307 122187 id=contig_2
-#NZ_CP006927.1 76749 76629 NZ_CP011577.1 112628 112748 id=contig_2
-
-
-
-if [ "$unique" == "true" ]; then
-    awk '
-        (!x[$1$4]++)
-    ' $output_dir/$file_name".bed"$suffix \
-> $output_dir/$file_name".bed"
-fi
+rm $output_dir/$file_name."links.tmp"
+rm $output_dir/$file_name".dict_length_percentage"
 
 echo "$(date)"
-echo "DONE adapting blast to bed"
-echo "File can be found at" $output_dir/$file_name".bed"
+echo "DONE adapting blast to link"
+echo "File can be found at" $output_dir/$file_name".links"
