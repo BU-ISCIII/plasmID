@@ -124,7 +124,7 @@ while getopts $options opt; do
 			;;
         I)
 			id_circos=true
-            id_output=",\"id=\"database_name[length(database_name)]"
+            id_output=",\"id=\"query_name[length(query_name)]"
 			;;
         h )
 		  	usage
@@ -219,8 +219,8 @@ awk '
 	{OFS="\t"
 	split($2, database_name, "'"${database_delimiter}"'")
 	split($1, query_name, "'"${query_delimiter}"'")}
-	(($3 > '"${blast_id_cutoff}"')&&(($4/$14) > '"${blast_len_percentage_value}"')&&($4 > '"${blast_len_alignment}"')) \
-	{print query_name['"$query_field"'], $7, $8, database_name['"$database_field"']'"$id_output"'}
+	(($3 > '"${blast_id_cutoff}"')&&(($4/$13) > '"${blast_len_percentage_value}"')&&($4 > '"${blast_len_alignment}"')) \
+	{print database_name['"$database_field"'], $9, $10, query_name['"$query_field"']'"$id_output"'}
 	' \
 > $output_dir/$file_name".bed"$suffix
 

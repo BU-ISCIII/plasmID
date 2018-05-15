@@ -62,10 +62,10 @@ cwd="$(pwd)"
 input_file="Input_file"
 blast_id_cutoff=90
 blast_len_percentage=50
-database_delimiter="_"
+database_delimiter="-"
 database_field=r
-query_delimiter="-"
-query_field=l
+query_delimiter="_"
+query_field=r
 unique=false
 suffix=""
 id_circos=false
@@ -210,32 +210,32 @@ awk '
 	BEGIN{OFS="\t"}
 	{split($1, query_name, "'"${query_delimiter}"'")
 	split($2,database_name, "'"${database_delimiter}"'")}
-	(($3 > '"${blast_id_cutoff}"') && (($4/$14)>'"${blast_len_percentage_value}"') && (!x[$2$1]++)) \
-	{{isInverted=($8-$9)
-		ext2=($14-$10)}
+	(($3 > '"${blast_id_cutoff}"') && (($4/$13)>'"${blast_len_percentage_value}"') && (!x[$1$2]++)) \
+	{{isInverted=($10-$9)
+		ext2=($13-$8)}
 		{if (isInverted < 0) 
-			{pos1 = $8 
-			pos2 = $7} 
+			{pos1 = $10 
+			pos2 = $9} 
 		else 
-			{pos1 =$7
-			pos2 = $8}
-		{if ((isInverted < 0) && (($13 - pos2) > $9))
-			{coordChr2 = (pos2 + $9)} 
-		else if ((isInverted < 0) && (($13 - pos2) <= $9))
-			{coordChr2=$13}
+			{pos1 =$9
+			pos2 = $10}
+		{if ((isInverted < 0) && (($14 - pos2) > $7))
+			{coordChr2 = (pos2 + $7)} 
+		else if ((isInverted < 0) && (($14 - pos2) <= $7))
+			{coordChr2=$14}
 		{if ((isInverted < 0) && (ext2 <= pos1))
 			{coordChr1= pos1 - ext2;}
 		else if ((isInverted < 0) && (ext2 > pos1))
 			{coordChr1= 1}
-		{if ((isInverted > 0) && (pos1 > $9))
-			{coordChr1=(pos1 - $9)}
-		else if ((isInverted > 0) && (pos1 <= $9))
+		{if ((isInverted > 0) && (pos1 > $7))
+			{coordChr1=(pos1 - $7)}
+		else if ((isInverted > 0) && (pos1 <= $7))
 			{coordChr1=1}
-		{if ((isInverted > 0) && (ext2 > ($13-pos2)))
-			{coordChr2= $13;}
-		else if ((isInverted > 0) && (ext2 <= ($13-pos2)))
+		{if ((isInverted > 0) && (ext2 > ($14-pos2)))
+			{coordChr2= $14;}
+		else if ((isInverted > 0) && (ext2 <= ($14-pos2)))
 			{coordChr2= (pos2 + ext2)}
-	{print query_name['"$query_field"'], coordChr1, coordChr2, database_name['"$database_field"'], "id="$14} }}}}}}
+	{print database_name['"$database_field"'], coordChr1, coordChr2, query_name['"$query_field"'], "id="$13} }}}}}}
 	' \
 	>$output_dir/$file_name".complete"
 
@@ -244,31 +244,33 @@ awk '
 	BEGIN{OFS="\t"}
 	{split($1, query_name, "'"${query_delimiter}"'")
 	split($2,database_name, "'"${database_delimiter}"'")}
-	(($3 > '"${blast_id_cutoff}"') && (($4/$14)>'"${blast_len_percentage_value}"') && (!x[$2$1]++)) \
-	{{isInverted=($8-$9)
-	ext2=($14-$10)}
+	(($3 > '"${blast_id_cutoff}"') && (($4/$13)>'"${blast_len_percentage_value}"') && (!x[$2$1]++)) \
+	{{isInverted=($10-$7)
+	ext2=($13-$8)}
 	{if (isInverted < 0) 
-		{pos1=$8
-		pos2=$7}
+		{pos1=$10
+		pos2=$9}
 	else
-		{pos1 =$7
-		pos2=$8}; \
-	{if ((isInverted < 0) && (($13 - pos2) < $9))
+		{pos1 =$9
+		pos2=$10}; \
+	{if ((isInverted < 0) && (($14 - pos2) < $7))
 		{coordChr1=1
-		coordChr2=($9-($13-pos2))
-		{print query_name['"$query_field"'], coordChr1, coordChr2, database_name['"$database_field"'], "id="$14}}
+		coordChr2=($7-($14-pos2))
+		{print database_name['"$database_field"'], coordChr1, coordChr2, query_name['"$query_field"'], "id="$13}}
 	{if ((isInverted < 0) && (ext2 > pos1))
-		{coordChr1=($13-(ext2-pos1))
-		coordChr2=$13
-		{print query_name['"$query_field"'], coordChr1, coordChr2, database_name['"$database_field"'], "id="$14}}
-	{if ((isInverted > 0) && (pos1 < $9))
-		{coordChr1=($13-($9-pos1))
-		coordChr2=$13
-		{print query_name['"$query_field"'], coordChr1, coordChr2, database_name['"$database_field"'], "id="$14}}
-	{if ((isInverted > 0) && (ext2 > ($13-pos2)))
+		{coordChr1=($14-(ext2-pos1))
+		coordChr2=$14
+		{print database_name['"$database_field"'], coordChr1, coordChr2, query_name['"$query_field"'], "id="$13}}
+	{if ((isInverted > 0) && (pos1 < $7))
+		{coordChr1=($14-($7-pos1))
+		coordChr2=$14
+		{print database_name['"$database_field"'], coordChr1, coordChr2, query_name['"$query_field"'], "id="$13}}
+	{if ((isInverted > 0) && (ext2 > ($14-pos2)))
 		{coordChr1=1
-		coordChr2=(ext2-($13-pos2))
-		{print query_name['"$query_field"'], coordChr1, coordChr2, database_name['"$database_field"'], "id="$14}}}}}}}}
+		coordChr2=(ext2-($14-pos2))
+		{print database_name['"$database_field"'], coordChr1, coordChr2, query_name['"$query_field"'], "id="$13}
+		}
+	}}}}}}
 	' \
 	>>$output_dir/$file_name".complete"
 

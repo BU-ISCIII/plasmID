@@ -217,10 +217,10 @@ echo "Min len percentage=" $blast_len_percentage
 #	' \
 #> $output_dir/$file_name".bed"$suffix
 
-awk '(($4/$14)>'"${blast_len_percentage_value}"') && !contigPlasmid[$2$1]++ {print $2$1}' $imageDir/$sample".plasmids.blast" > $output_dir/$file_name".dictionary_link"
+awk '(($4/$13)>'"${minimumLengthComplete}"') && !contigPlasmid[$1$2]++ {print $1$2}' $imageDir/$sample".plasmids.blast" > $imageDir/$sample".dictionary_covered.txt"
 
-awk 'NR==FNR{contigPlasmid[$2]=$2;next} \
-{split($2, contigname, "_"); header=$2$1}{if ((header in contigPlasmid) && ($3>90) && (($4/$14)>0.05)) print contigname[length(contigname)], $9,$10,$1,$7,$8, "id=contig_"contigname[length(contigname)]}' \
+awk 'NR==FNR{contigPlasmid[$1]=$1;next} \
+{split($1, contigname, "_"); header=$1$2}{if ((header in contigPlasmid) && ($3>90) && (($4/$13)>0.05)) print contigname[length(contigname)], $7,$8,$2,$9,$10, "id=contig_"contigname[length(contigname)]}' \
 $imageDir/$sample".dictionary_covered.txt" $imageDir/$sample".plasmids.blast" > $imageDir/$sample".plasmids.blast.links"
 
 #sample.blast.links (file with matching coordinates between coordinates in contigs and plasmids)
@@ -234,6 +234,14 @@ $imageDir/$sample".dictionary_covered.txt" $imageDir/$sample".plasmids.blast" > 
 
 awk 'BEGIN{OFS="\t";}{if($1 != savedNode){savedNode= $1; delete chr} else{for(i in chr){print $4" "$5" "$6" "chr[i]" id="savedNode}}chr[$4$5$6] = $4" "$5" "$6}' \
 $imageDir/$sample".plasmids.blast.links" > $imageDir/$sample".plasmids.blast.links.sorted"
+
+
+#NG_048025.1 1361 1127 NG_048025.1 1178 1476 id=contig_1
+#NZ_CP008930.1 122307 122187 NZ_CP010574.1 66599 66479 id=contig_2
+#NZ_CP011577.1 112628 112748 NZ_CP010574.1 66599 66479 id=contig_2
+#NZ_CP011577.1 112628 112748 NZ_CP008930.1 122307 122187 id=contig_2
+#NZ_CP006927.1 76749 76629 NZ_CP011577.1 112628 112748 id=contig_2
+
 
 
 if [ "$unique" == "true" ]; then
