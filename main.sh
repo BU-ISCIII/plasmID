@@ -289,3 +289,7 @@ contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| a
 
 #ABA622.plasmids.complete
 
+./blast_to_link.sh -i I00_09/data/I00_09.plasmids.blast -I
+
+#ABA622.plasmids.links
+
