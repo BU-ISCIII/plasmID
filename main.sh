@@ -273,7 +273,6 @@ contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| a
 #ABA622.gff
 
 
-#############################################
 ./blast_align.sh -i TEST/ABA622/data/ABA622.fna -d TEST/ABA622/mapping/ABA622.coverage_adapted_clustered_ac_term.fasta -o TEST/ABA622/data/ -p plasmids2
 
 #ABA622.plasmids.blast
@@ -281,7 +280,7 @@ contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| a
 
 #./blast_to_bed.sh -i TEST/ABA622/data/ABA622.plasmids.blast -q - -d _ -D r -I
 
-./blast_to_bed.sh -i I00_09/data/I00_09.plasmids.blast -l 0 -L 500 -d - -q _ -Q r -I
+./blast_to_bed.sh -i TEST/ABA622/data/ABA622.plasmids.blast -l 0 -L 500 -d - -q _ -Q r -I
 
 #ABA622.plasmids.bed
 
@@ -289,7 +288,7 @@ contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| a
 
 #ABA622.plasmids.complete
 
-./blast_to_link.sh -i I00_09/data/I00_09.plasmids.blast -I
+./blast_to_link.sh -i TEST/ABA622/data/ABA622.plasmids.blast -I
 
 #ABA622.plasmids.links
 
