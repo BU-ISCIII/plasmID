@@ -278,8 +278,6 @@ contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| a
 #ABA622.plasmids.blast
 
 
-#./blast_to_bed.sh -i TEST/ABA622/data/ABA622.plasmids.blast -q - -d _ -D r -I
-
 ./blast_to_bed.sh -i TEST/ABA622/data/ABA622.plasmids.blast -l 0 -L 500 -d - -q _ -Q r -I
 
 #ABA622.plasmids.bed
@@ -292,3 +290,22 @@ contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| a
 
 #ABA622.plasmids.links
 
+./gff_to_bed.sh -i TEST/ABA622/data/ABA622.gff -L -u
+
+#ABA622.gff.bed
+
+
+
+
+
+######################### ABR _ INCLUDE FILENAME
+
+./blast_align.sh -i /processing_Data/bioinformatics/references/resistance/ARGANNOT/20170213/ARGannot.r1.pID.fasta -d TEST/ABA622/data/ABA622.fna -o TEST/ABA622/data -p abr -f ABA622
+
+#ABA622.abr.blast
+
+./blast_to_bed.sh -i TEST/ABA622/data/ARGannot.abr.blast -b 95 -l 90 -d _ -D r -q " " -Q r
+
+#ABA622.abr.bed
+
+./coordinate_adapter.sh -i TEST/ABA622/data/ABA622.abr.bed -l TEST/ABA622/data/ABA622.plasmids.links

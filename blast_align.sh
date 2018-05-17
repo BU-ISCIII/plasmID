@@ -91,7 +91,7 @@ threads=1
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
-options=":i:o:p:d:t:e:T:vh"
+options=":i:o:p:f:d:t:e:T:vh"
 while getopts $options opt; do
 	case $opt in
 		i )
@@ -106,6 +106,9 @@ while getopts $options opt; do
 		p)
 			prefix=$OPTARG
 			;;
+		f)
+			file_name=$OPTARG
+			;;
 		t )			
           	database_type=$OPTARG
           	;;
@@ -118,7 +121,6 @@ while getopts $options opt; do
         T)			
           	threads=$OPTARG
           	;;
-        	
         h )
 		  	usage
 		  	exit 1

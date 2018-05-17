@@ -71,7 +71,7 @@ cds_word=""
 cds_locus=""
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
-options=":i:b:o:q:Q:s:C:Lvh"
+options=":i:b:o:q:Q:C:Luvh"
 while getopts $options opt; do
 	case $opt in
 		i )
@@ -95,8 +95,9 @@ while getopts $options opt; do
 		Q )
 			query_field=$OPTARG
 			;;
-		s )
-			suffix=$OPTARG
+		u )
+			unique=true
+			suffix=".unique.tmp"
 			;;
         h )
 		  	usage
@@ -142,7 +143,7 @@ fi
 
 
 if [ ! $file_name ]; then
-	file_name=$(basename $input_file | cut -d. -f1)
+	file_name=$(basename $input_file | cut -d. -f1,2)
 fi
 
 ##CHECK FIELDS TO RETRIEVE
@@ -166,7 +167,7 @@ echo "Getting bed file from GFF in" $file_name
 
 #Filter Gff(3) file from prokka and create a bed file with coordinates with annotated genes (WITH NAMES)
 awk '
-	BEGIN{OFS="\t";}
+	BEGIN{OFS="\t"}
 	{split($1, query_name, "'"${query_delimiter}"'")
 	split($9,description,"Name=")
 	split(description[2],name,";")
@@ -181,15 +182,25 @@ awk '
 	}
 	}
 	' \
-$input_file 
-#> $imageDir/$sample".gff.bed"
+	$input_file \
+	> $output_dir/$file_name".bed"$suffix
 
 
 if [ "$unique" == "true" ]; then
     awk '
         (!x[$1$4]++)
-    ' $output_dir/$file_name".bed"$suffix \
-> $output_dir/$file_name".bed"
+    	' $output_dir/$file_name".bed"$suffix \
+		> $output_dir/$file_name".bed"$suffix".name"
+
+	awk '
+		BEGIN{OFS="\t"}
+		{split($4, namelowbar, "_")} 
+		{$4=($4 !~ /CDS/) ? namelowbar[1] : $4}1
+		' $output_dir/$file_name".bed"$suffix".name" \
+		> $output_dir/$file_name".bed"
+
+		rm $output_dir/$file_name".bed"$suffix
+		rm $output_dir/$file_name".bed"$suffix".name"
 fi
 
 echo "$(date)"
