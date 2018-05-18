@@ -289,23 +289,42 @@ contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| a
 ./blast_to_link.sh -i TEST/ABA622/data/ABA622.plasmids.blast -I
 
 #ABA622.plasmids.links
+#ABA622.plasmids.blast.links
 
 ./gff_to_bed.sh -i TEST/ABA622/data/ABA622.gff -L -u
 
 #ABA622.gff.bed
 
+./coordinate_adapter.sh -i TEST/ABA622/data/ABA622.gff.bed -l TEST/ABA622/data/ABA622.plasmids.blast.links -n 10000
+
+#ABA622.gff.coordinates
 
 
 
 
 ######################### ABR _ INCLUDE FILENAME
 
-./blast_align.sh -i /processing_Data/bioinformatics/references/resistance/ARGANNOT/20170213/ARGannot.r1.pID.fasta -d TEST/ABA622/data/ABA622.fna -o TEST/ABA622/data -p abr -f ABA622
+./blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOTICS_PSMP_T/ANALYSIS/PLASMIDID/references/ARGannot.r1.pID.fasta -d TEST/ABA622/data/ABA622.fna -o TEST/ABA622/data -p abr -f ABA622
 
 #ABA622.abr.blast
 
-./blast_to_bed.sh -i TEST/ABA622/data/ARGannot.abr.blast -b 95 -l 90 -d _ -D r -q " " -Q r
+./blast_to_bed.sh -i TEST/ABA622/data/ABA622.abr.blast -b 95 -l 90 -d _ -D r -q " " -Q r
 
 #ABA622.abr.bed
 
-./coordinate_adapter.sh -i TEST/ABA622/data/ABA622.abr.bed -l TEST/ABA622/data/ABA622.plasmids.links
+./coordinate_adapter.sh -i TEST/ABA622/data/ABA622.abr.bed -l TEST/ABA622/data/ABA622.plasmids.blast.links -u
+
+#ABA622.abr.coordinates
+
+###################### INC
+
+./blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOTICS_PSMP_T/ANALYSIS/PLASMIDID/references/plasmidFinder_01_26_2018.fsa -d TEST/ABA622/data/ABA622.fna -o TEST/ABA622/data -p inc -f ABA622
+
+#ABA622.inc.blast
+
+/blast_to_bed.sh -i TEST/ABA622/data/ABA622.inc.blast -b 95 -l 80 -d _ -D r -q _ -Q l
+#ABA622.inc.bed
+
+./coordinate_adapter.sh -i TEST/ABA622/data/ABA622.inc.bed -l TEST/ABA622/data/ABA622.plasmids.blast.links -u
+
+#ABA622.inc.coordinates

@@ -223,7 +223,7 @@ awk '
 	{if ((header in contigPlasmid) && ($3>'"${blast_id_cutoff}"') && (($4/$13)>0.05)) 
 		print query_name['"$query_field"'], $7,$8,database_name['"$database_field"'],$9,$10'"$id_output"'}' \
 	$output_dir/$file_name".dict_length_percentage" $input_file \
-	> $output_dir/$file_name."links.tmp"
+	> $output_dir/$file_name."blast.links"
 
 ##Change coordinates from query --> ddbb to ddbb-->ddbb in order to represent them in CIRCOSS
 
@@ -236,10 +236,9 @@ awk '
 		{print $4" "$5" "$6" "chr[i]" id="savedNode}
 	}
 	chr[$4$5$6] = $4" "$5" "$6}' \
-	$output_dir/$file_name."links.tmp" \
+	$output_dir/$file_name."blast.links" \
 	> $output_dir/$file_name."links"
 
-rm $output_dir/$file_name."links.tmp"
 rm $output_dir/$file_name".dict_length_percentage"
 
 echo "$(date)"

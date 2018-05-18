@@ -137,7 +137,7 @@ fi
 
 
 echo "$(date)"
-echo "adapting coordinates from" $file_name
+echo "adapting coordinates from" $input_file and $link_file
 
 #Create a dictionary file with all posibilities: Column 1 and 5 must have some common terms
 
@@ -160,8 +160,8 @@ coordChr2=(coordChr1+genelength); {print $8, coordChr1, coordChr2, $4}}' $output
 
 #Remove duplicate of several matches 
 
-awk '($2 > 0) && ($3 > 0)' $output_dir/$file_name".coordinates.negatives" #\
-#> $output_dir/$file_name".coordinates"$suffix
+awk '($2 > 0) && ($3 > 0)' $output_dir/$file_name".coordinates.negatives" \
+> $output_dir/$file_name".coordinates"$suffix
 
 
 if [ "$unique" == "true" ]; then
