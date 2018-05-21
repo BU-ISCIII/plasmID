@@ -1,4 +1,6 @@
 ## Ignore test files
 TEST/ABA622/mapping
+TEST/ABA622/trimmed
 TEST/I00_09
+PS_second
 I00_09

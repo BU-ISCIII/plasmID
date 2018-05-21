@@ -4,10 +4,9 @@
 #or a compound command returns a non-zero status: If errors are not handled by user
 set -e
 # Treat unset variables and parameters other than the special parameters ‘@’ or ‘*’ as an error when performing parameter expansion.
-# An error message will be written to the standard error, and a non-interactive shell will exit
-set -u
+
 #Print everything as if it were executed, after substitution and expansion is applied: Debug|log option
-set -x
+#set -x
 
 #=============================================================
 # HEADER
@@ -16,14 +15,14 @@ set -x
 #INSTITUTION:ISCIII
 #CENTRE:BU-ISCIII
 #AUTHOR: Pedro J. Sola
-VERSION=1.0 
+VERSION=Beta 
 #CREATED: 15 March 2018
-#REVISION:
-#		19 March 2018: Complete usage info
-#		19 March 2018: Check mandatory files. folders and variables
-#DESCRIPTION:Script that index a database and map a supplied pair-end sequences
-#TODO
-#	-Handle files extensions for bowtie, now is fastq by default
+#
+#ACKNOLEDGE: longops2getops.sh: https://gist.github.com/adamhotep/895cebf290e95e613c006afbffef09d7
+#
+#DESCRIPTION: plasmidID is a computational pipeline tha reconstruct and annotate the most likely plasmids present in one sample		
+#
+#
 #================================================================
 # END_OF_HEADER
 #================================================================
@@ -33,19 +32,19 @@ VERSION=1.0
 usage() {
 	cat << EOF
 
-Bowtie_mapper script index a database and map a supplied pair-end sequences
+plasmidID is a computational pipeline tha reconstruct and annotate the most likely plasmids present in one sample
 
 usage : $0 [-i <inputfile>] [-o <directory>] <-d database(fasta)> <-s sample_name> <-1 R1> <-2 R2> 
 		[-g group_name] [-f <int>] [-T <int>] [-a] [-v] [-h]
 
-	-i input directory (optional)
-	-o output directory (optional)
-	-d database to map (.fasta)
-	-s sample name
+	-1 reads corresponding to paired-end R1 (mandatory)
+	-2 reads corresponding to paired-end R2 (mandatory)
+	-d database to map and reconstruct (mandatory)
+	-s sample name (mandatory)
 	-g group name (optional). If unset, samples will be gathered in NO_GROUP group
-	-1 reads corresponding to paired-end R1
-	-2 reads corresponding to paired-end R2
-	-f offrate index for bowtie_build (optional). Default value 1. for quicker indexing use higher number
+	
+
+
 	-a use -a mapping (off by default)
 	-T number of threads
 	-v version
@@ -66,6 +65,32 @@ if [ $? != 0 ] ; then
 fi
 
 
+
+# translate long options to short
+reset=true
+for arg in "$@"
+do
+    if [ -n "$reset" ]; then
+      unset reset
+      set --      # this resets the "$@" array so we can rebuild it
+    fi
+    case "$arg" in
+##MANDATORY MINIMAL OPTIONS
+    	--R1)		set -- "$@"	-1 ;;
+		--R2)		set -- "$@"	-2 ;;
+		--database)		set -- "$@"	-d ;;
+		--sample)		set -- "$@"	-s ;;
+		--group)		set -- "$@"	-g ;;
+##
+		--R1)		set -- "$@"	-1 ;;
+       	--help)    	set -- "$@" -h ;;
+       	--version) 	set -- "$@" -v ;;
+       	--config)  	set -- "$@" -c ;;
+       # pass through anything else
+       *)         set -- "$@" "$arg" ;;
+    esac
+done
+
 #DECLARE FLAGS AND VARIABLES
 threads=1
 offrate=1
@@ -81,8 +106,8 @@ R2="R2"
 options=":i:o:s:g:d:1:2:f:avh"
 while getopts $options opt; do
 	case $opt in
-		i )
-			input_dir=$OPTARG
+		1 )
+			r1_file=$OPTARG
 			;;
 		o )
 			output_dir=$OPTARG
@@ -96,6 +121,8 @@ while getopts $options opt; do
 		d )
 			database=$OPTARG
 			;;
+
+
 		1 )
 			R1=$OPTARG
 			;;
@@ -180,9 +207,9 @@ check_mandatory_files() {
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-check_dependencies bowtie2-build bowtie2
+#check_dependencies bowtie2-build bowtie2
 
-check_mandatory_files $database $R1 $R2
+#check_mandatory_files $database $R1 $R2
 
 if [ ! $sample ]; then
 	echo "ERROR: please, provide a sample name"
