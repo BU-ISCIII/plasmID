@@ -34,23 +34,41 @@ usage() {
 
 plasmidID is a computational pipeline tha reconstruct and annotate the most likely plasmids present in one sample
 
-usage : $0 [-i <inputfile>] [-o <directory>] <-d database(fasta)> <-s sample_name> <-1 R1> <-2 R2> 
-		[-g group_name] [-f <int>] [-T <int>] [-a] [-v] [-h]
+usage : $0 [-1 <R1>] [-2 <R2>] <-d database(fasta)> <-s sample_name> [-g group_name] [options]
 
-	-1 reads corresponding to paired-end R1 (mandatory)
-	-2 reads corresponding to paired-end R2 (mandatory)
-	-d database to map and reconstruct (mandatory)
-	-s sample name (mandatory)
-	-g group name (optional). If unset, samples will be gathered in NO_GROUP group
+	Basic options:
+	--default
+	--explore
+
+	Mandatory input data:
+	-1 | --R1	<filename>	reads corresponding to paired-end R1 (mandatory)
+	-2 | --R2	<filename>	reads corresponding to paired-end R2 (mandatory)
+	-d | --database	<filename>	database to map and reconstruct (mandatory)
+	-s | --sample	<string>	sample name (mandatory)
+
+	Optional input data:
+	-g | --group	<string>	group name (optional). If unset, samples will be gathered in NO_GROUP group
+	-c | --contig	<filename>	file with contigs. If supplied, plasmidID will not assembly reads
+	-a | --annotate <filename>	file with sequences to draw in the final images
+	-o 		<output_dir>	output directory, by default is the current directory
+
+	Pipeline options:
+	-C | --coverage-cutoff	<int>	minimun coverage percentage to select a plasmid as scafold (0-100), default 80
+	-S | --coverage-summary	<int>	minimun coverage percentage to include plasmids in summary image (0-100), default 90
+	-f | --cluster		<int>	identity percentage to cluster plasmids into the same representative sequence (0-100), default 80
+	-i | --alignment-identity <int>	minimun identity percentage aligned for a contig to annotate
+	-l | --alignment-percentage <int>	minimun length percentage aligned for a contig to annotate
+	-L | --length-total	<int>	minimun alignment length to filter blast analysis
+
+	--only-reconstruct	Database supplied will not be filtered and all sequences will be used as scaffold 
 	
+	Additional options:
 
+	-T | --threads	<int>	number of threads
+	-v | --version		version
+	-h | --help		display usage message
 
-	-a use -a mapping (off by default)
-	-T number of threads
-	-v version
-	-h display usage message
-
-example: bowtie_mapper.sh -d database.fasta -s COLI -1 ecoli_1.fastq -2 ecoli_2.fastq -a
+example: ./plasmidID.sh -1 ecoli_R1.fastq.gz -2 ecoli_R2.fastq.gz -d database.fasta -s ECO_553 -G ENTERO
 
 EOF
 }
@@ -78,14 +96,22 @@ do
 ##MANDATORY MINIMAL OPTIONS
     	--R1)		set -- "$@"	-1 ;;
 		--R2)		set -- "$@"	-2 ;;
-		--database)		set -- "$@"	-d ;;
-		--sample)		set -- "$@"	-s ;;
-		--group)		set -- "$@"	-g ;;
-##
-		--R1)		set -- "$@"	-1 ;;
+		--database)	set -- "$@"	-d ;;
+		--sample)	set -- "$@"	-s ;;
+##OPTIONAL
+		--group)	set -- "$@"	-g ;;
+		--contig)	set -- "$@"	-c ;;
+		--annotate)	set -- "$@"	-a ;;
+##PIPELINE
+		--coverage-cutoff)	set -- "$@"	-C ;;
+		--coverage-summary)	set -- "$@"	-S ;;
+		--cluster)	set -- "$@"	-f ;;
+		--alignment-percentage)	set -- "$@"	-l ;;
+		--length-total)	set -- "$@"	-L ;;
+##ADDITIONAL
+		--threads)		set -- "$@"	-T ;;
        	--help)    	set -- "$@" -h ;;
        	--version) 	set -- "$@" -v ;;
-       	--config)  	set -- "$@" -c ;;
        # pass through anything else
        *)         set -- "$@" "$arg" ;;
     esac
@@ -93,24 +119,29 @@ done
 
 #DECLARE FLAGS AND VARIABLES
 threads=1
-offrate=1
 cwd="$(pwd)"
-a_mapping=""
 group="NO_GROUP"
 database="Database"
-R1="R1"
-R2="R2"
+coverage_cutoff=80
+coverage_summary=90
+cluster_cutoff=80
+alignment_percentage=50
+R1="R1_file"
+R2="R2_file"
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
-options=":i:o:s:g:d:1:2:f:avh"
+options=":1:2:d:s:g:c:a:o:C:S:f:l:L:T:vh"
 while getopts $options opt; do
 	case $opt in
 		1 )
 			r1_file=$OPTARG
 			;;
-		o )
-			output_dir=$OPTARG
+		2 )
+			r2_file=$OPTARG
+			;;
+		d )
+			database=$OPTARG
 			;;
 		s )
 			sample=$OPTARG
@@ -118,25 +149,35 @@ while getopts $options opt; do
 		g)
 			group=$OPTARG
 			;;
-		d )
-			database=$OPTARG
+		c)
+			contigs=$OPTARG
 			;;
-
-
-		1 )
-			R1=$OPTARG
+		g)
+			group=$OPTARG
 			;;
-		2 )
-			R2=$OPTARG
+		a )
+			annotation+=($OPTARG)
+			;;
+		C )
+			coverage_cutoff=$OPTARG
+			;;
+		S )
+			coverage_summary=$OPTARG
 			;;
 		f )			
-          	offrate=$OPTARG
+          	cluster_cutoff=$OPTARG
+      		;;
+      	l )			
+          	alignment_percentage=$OPTARG
+      		;;
+      	L )			
+          	alignment_total=$OPTARG
       		;;
         T ) 
 			threads=$OPTARG
             ;;
-        a)
-			a_mapping="-a"
+        o)
+			output_dir=$OPTARG
 			;;
         h )
 		  	usage
@@ -164,52 +205,12 @@ while getopts $options opt; do
 done
 shift $((OPTIND-1))
 
-
-
-#CHECK DEPENDENCIES FUNCTION
-#This function check all dependencies listed and exits if any is missing
-check_dependencies() {
-	missing_dependencies=0
-	for command in "$@"; do
-		if ! [ -x "$(which $command 2> /dev/null)" ]; then
-			echo "Error: Please install $command or make sure it is in your path" >&2
-			let missing_dependencies++
-		else
-			echo "$command installed"
-		fi
-	done
-
-	if [ $missing_dependencies -gt 0 ]; then 
-		echo "ERROR: $missing_dependencies missing dependencies, aborting execution" >&2
-		exit 1
-	fi
-}
-
-#CHECK MANDATORY FIELDS
-check_mandatory_files() {
-	missing_files=0
-	for file in "$@"; do
-		if [ ! -f $file ]; then
-			echo "$(basename $file)" "not supplied, please, introduce a valid file" >&2
-			let missing_files++
-		fi
-	done
-
-	if [ $missing_files -gt 0 ]; then 
-		echo "ERROR: $missing_files missing files, aborting execution" >&2
-		#exit 1
-	fi
-}
-
-
 #================================================================
 # MAIN_BODY
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-#check_dependencies bowtie2-build bowtie2
-
-#check_mandatory_files $database $R1 $R2
+.lib/check_mandatory_files $r1_file $r2_file $database 
 
 if [ ! $sample ]; then
 	echo "ERROR: please, provide a sample name"
@@ -218,7 +219,7 @@ if [ ! $sample ]; then
 fi
 
 if [ ! $output_dir ]; then
-	output_dir=$cwd"/$group/$sample/mapping/"
+	output_dir=$cwd
 	echo "Default output directory is" $output_dir
 	mkdir -p $output_dir
 else
@@ -227,141 +228,160 @@ else
 fi
 
 
+####TRIMMING#################################################################
+#############################################################################
+
+.lib/quality_trim.sh -1 $r1_file -2 $r2_file -s $sample -g $group -T $threads
+
+#group/sample/trimmed/sample_1_paired.fastq.gz
+#group/sample/trimmed/sample_1_unpaired.fastq.gz
+#group/sample/trimmed/sample_2_paired.fastq.gz
+#group/sample/trimmed/sample_2_unpaired.fastq.gz
+
+
+####ASSEMLY##################################################################
+#############################################################################
+
+.lib/spades_assembly.sh -q $group/$sample/trimmed/ -T $threads
+
+#group/sample/assembly/scaffolds.fasta
+
+####MAPPING##################################################################
+#############################################################################
+
+.lib/bowtie_mapper.sh -d $database \
+ -g $group \
+ -s $sample \
+ -1 $group/$sample/trimmed/$sample"_1_paired.fastq.gz" \
+ -2 $group/$sample/trimmed/$sample"_2_paired.fastq.gz"
+
+ #group/sample/mapping/sample.sam
+
+ .lib/sam_to_bam.sh -i $group/$sample/mapping/$sample.sam
+
+ #group/sample/mapping/sample.bam
+ #group/sample/mapping/sample.bam.bai
+
+
+####COVERAGE FILTERING#######################################################
+#############################################################################
+
+
+ .lib/get_coverage.sh -i $group/$sample/mapping/$sample".sorted.bam" -d $database
+
+ #group/sample/mapping/sample.coverage
+
+ .lib/adapt_filter_coverage.sh -i $group/$sample/mapping/$sample".coverage" -c $coverage_cutoff
+
+ #sample.coverage_adapted
+ #sample.coverage_adapted_filtered_80
 
 
 
-####TRIMMING############
-########################
-./quality_trim.sh -1 ../../TRIMMED/ACIN_first/ABA622/ABA622_1_paired.fastq.gz -2 ../../TRIMMED/ACIN_first/ABA622/ABA622_2_paired.fastq.gz -s ABA622 -g TEST -T 8
-
-#TEST/ABA622/trimmed/ABA622_1_paired.fastq.gz
-#TEST/ABA622/trimmed/ABA622_1_unpaired.fastq.gz
-#TEST/ABA622/trimmed/ABA622_2_paired.fastq.gz
-#TEST/ABA622/trimmed/ABA622_2_unpaired.fastq.gz
-
-./spades_assembly.sh -q PS_second/PAE1286/trimmed/ -T 8
 
 
 
 
- bash bowtie_mapper.sh -d ../../../REFERENCES/PLASMIDS/plasmid.all.genomic.dec212017.fasta_psi_90 \
- -g TEST \
- -s ABA622 \
- -1 ../../TRIMMED/ACIN_first/ABA622/ABA622_1_paired.fastq.gz \
- -2 ../../TRIMMED/ACIN_first/ABA622/ABA622_2_paired.fastq.gz
-
- #ABA622.sam
-
- bash sam_to_bam.sh -i GROUP/ABA622_2/mapping/ABA622_2.sam
-
- #ABA622.sorted.bam
- #ABA622.sorted.bam.bai
-
- bash get_coverage.sh -i TEST/ABA622/mapping/ABA622.sorted.bam -d ../../../REFERENCES/PLASMIDS/plasmid.all.genomic.dec212017.fasta_psi_90
-
- #ABA622.coverage
-
- bash adapt_filter_coverage.sh -i TEST/ABA622/mapping/ABA622.coverage -c 50
 
 
- #ABA622.coverage_adapted
- #ABA622.coverage_adapted_filtered_50  
 
-bash filter_fasta.sh -i ../../../REFERENCES/PLASMIDS/plasmid.all.genomic.dec212017.fasta_psi_90 -f TEST/ABA622/mapping/ABA622.coverage_adapted_filtered_50
+ 
 
-#ABA622.coverage_adapted_filtered_50_term.fasta
+bash filter_fasta.sh -i ../../../REFERENCES/PLASMIDS/plasmid.all.genomic.dec212017.fasta_psi_90 -f group/sample/mapping/sample.coverage_adapted_filtered_50
 
-bash cdhit_cluster.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_filtered_50_term.fasta -c 0.8 -M 5000 -T 0
+#sample.coverage_adapted_filtered_50_term.fasta
 
-#ABA622.coverage_adapted_filtered_50_term.fasta_80 >> ARCHIVO FINAL DE PLÁSMIDOS FILTRADO Y CLUSTERIZADO
+bash cdhit_cluster.sh -i group/sample/mapping/sample.coverage_adapted_filtered_50_term.fasta -c 0.8 -M 5000 -T 0
+
+#sample.coverage_adapted_filtered_50_term.fasta_80 >> ARCHIVO FINAL DE PLÁSMIDOS FILTRADO Y CLUSTERIZADO
 ########################################################################################################
-#ABA622.coverage_adapted_filtered_50_term.fasta_80.clstr
+#sample.coverage_adapted_filtered_50_term.fasta_80.clstr
 
-bash process_cluster_output.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_filtered_50_term.fasta_80 -b TEST/ABA622/mapping/ABA622.coverage_adapted -c 50
+bash process_cluster_output.sh -i group/sample/mapping/sample.coverage_adapted_filtered_50_term.fasta_80 -b group/sample/mapping/sample.coverage_adapted -c 50
 
-#ABA622.coverage_adapted_clustered
-#ABA622.coverage_adapted_clustered_percentage
-#ABA622.coverage_adapted_clustered_ac >> PROBABLY NOT NEEDED
+#sample.coverage_adapted_clustered
+#sample.coverage_adapted_clustered_percentage
+#sample.coverage_adapted_clustered_ac >> PROBABLY NOT NEEDED
 ############################################################
 
 ###############################################################################################################################################
 ######################## DONE WITH MAPPING AND CLUSTERING #####################################################################################
 ###############################################################################################################################################
 
-bash build_karyotype.sh -i TEST/ABA622/mapping/ABA622.coverage_adapted_clustered -K 50 -k 50 -o TEST/ABA622/data
+bash build_karyotype.sh -i group/sample/mapping/sample.coverage_adapted_clustered -K 50 -k 50 -o group/sample/data
 
 #group/sample/data
-#ABA622.karyotype_individual.txt
-#ABA622.karyotype_individual.txt
+#sample.karyotype_individual.txt
+#sample.karyotype_individual.txt
 
-./get_coverage.sh -i TEST/ABA622/mapping/ABA622.sorted.bam -p -o TEST/ABA622/data/
+./get_coverage.sh -i group/sample/mapping/sample.sorted.bam -p -o group/sample/data/
 
-#ABA622.bedgraph
+#sample.bedgraph
 
-./filter_fasta.sh -i TEST/ABA622/data/ABA622.bedgraph -f TEST/ABA622/mapping/ABA622.coverage_adapted_clustered_ac -G
+./filter_fasta.sh -i group/sample/data/sample.bedgraph -f group/sample/mapping/sample.coverage_adapted_clustered_ac -G
 
-#ABA622.bedgraph_term
+#sample.bedgraph_term
 
 contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| awk '/'"${sample}"'/' | awk 'NR==1')
 
-/prokka_annotation.sh -i ../../ASSEMBLY/ACIN_first/ABA622/scaffolds.fasta -p ABA622 -O TEST/ABA622/data/ -c
+/prokka_annotation.sh -i ../../ASSEMBLY/ACIN_first/sample/scaffolds.fasta -p sample -O group/sample/data/ -c
 
-#ABA622.fna
-#ABA622.gff
-
-
-./blast_align.sh -i TEST/ABA622/data/ABA622.fna -d TEST/ABA622/mapping/ABA622.coverage_adapted_clustered_ac_term.fasta -o TEST/ABA622/data/ -p plasmids2
-
-#ABA622.plasmids.blast
+#sample.fna
+#sample.gff
 
 
-./blast_to_bed.sh -i TEST/ABA622/data/ABA622.plasmids.blast -l 0 -L 500 -d - -q _ -Q r -I
+./blast_align.sh -i group/sample/data/sample.fna -d group/sample/mapping/sample.coverage_adapted_clustered_ac_term.fasta -o group/sample/data/ -p plasmids2
 
-#ABA622.plasmids.bed
+#sample.plasmids.blast
 
-./blast_to_complete.sh -i TEST/ABA622/data/ABA622.plasmids.blast
 
-#ABA622.plasmids.complete
+./blast_to_bed.sh -i group/sample/data/sample.plasmids.blast -l 0 -L 500 -d - -q _ -Q r -I
 
-./blast_to_link.sh -i TEST/ABA622/data/ABA622.plasmids.blast -I
+#sample.plasmids.bed
 
-#ABA622.plasmids.links
-#ABA622.plasmids.blast.links
+./blast_to_complete.sh -i group/sample/data/sample.plasmids.blast
 
-./gff_to_bed.sh -i TEST/ABA622/data/ABA622.gff -L -u
+#sample.plasmids.complete
 
-#ABA622.gff.bed
+./blast_to_link.sh -i group/sample/data/sample.plasmids.blast -I
 
-./coordinate_adapter.sh -i TEST/ABA622/data/ABA622.gff.bed -l TEST/ABA622/data/ABA622.plasmids.blast.links -n 10000
+#sample.plasmids.links
+#sample.plasmids.blast.links
 
-#ABA622.gff.coordinates
+./gff_to_bed.sh -i group/sample/data/sample.gff -L -u
+
+#sample.gff.bed
+
+./coordinate_adapter.sh -i group/sample/data/sample.gff.bed -l group/sample/data/sample.plasmids.blast.links -n 10000
+
+#sample.gff.coordinates
 
 
 
 
 ######################### ABR _ INCLUDE FILENAME
 
-./blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOTICS_PSMP_T/ANALYSIS/PLASMIDID/references/ARGannot.r1.pID.fasta -d TEST/ABA622/data/ABA622.fna -o TEST/ABA622/data -p abr -f ABA622
+./blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOTICS_PSMP_T/ANALYSIS/PLASMIDID/references/ARGannot.r1.pID.fasta -d group/sample/data/sample.fna -o group/sample/data -p abr -f sample
 
-#ABA622.abr.blast
+#sample.abr.blast
 
-./blast_to_bed.sh -i TEST/ABA622/data/ABA622.abr.blast -b 95 -l 90 -d _ -D r -q " " -Q r
+./blast_to_bed.sh -i group/sample/data/sample.abr.blast -b 95 -l 90 -d _ -D r -q " " -Q r
 
-#ABA622.abr.bed
+#sample.abr.bed
 
-./coordinate_adapter.sh -i TEST/ABA622/data/ABA622.abr.bed -l TEST/ABA622/data/ABA622.plasmids.blast.links -u
+./coordinate_adapter.sh -i group/sample/data/sample.abr.bed -l group/sample/data/sample.plasmids.blast.links -u
 
-#ABA622.abr.coordinates
+#sample.abr.coordinates
 
 ###################### INC
 
-./blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOTICS_PSMP_T/ANALYSIS/PLASMIDID/references/plasmidFinder_01_26_2018.fsa -d TEST/ABA622/data/ABA622.fna -o TEST/ABA622/data -p inc -f ABA622
+./blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOTICS_PSMP_T/ANALYSIS/PLASMIDID/references/plasmidFinder_01_26_2018.fsa -d group/sample/data/sample.fna -o group/sample/data -p inc -f sample
 
-#ABA622.inc.blast
+#sample.inc.blast
 
-/blast_to_bed.sh -i TEST/ABA622/data/ABA622.inc.blast -b 95 -l 80 -d _ -D r -q _ -Q l
-#ABA622.inc.bed
+/blast_to_bed.sh -i group/sample/data/sample.inc.blast -b 95 -l 80 -d _ -D r -q _ -Q l
+#sample.inc.bed
 
-./coordinate_adapter.sh -i TEST/ABA622/data/ABA622.inc.bed -l TEST/ABA622/data/ABA622.plasmids.blast.links -u
+./coordinate_adapter.sh -i group/sample/data/sample.inc.bed -l group/sample/data/sample.plasmids.blast.links -u
 
-#ABA622.inc.coordinates
+#sample.inc.coordinates
