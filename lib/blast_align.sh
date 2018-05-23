@@ -152,9 +152,9 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-bash check_mandatory_files.sh $input_file $database
+bash lib/check_mandatory_files.sh $input_file $database
 
-bash check_dependencies.sh blastn
+bash lib/check_dependencies.sh blastn
 
 if [ ! $prefix ]; then
 	echo "please provide a prefix to identify this blast analysis"

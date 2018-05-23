@@ -145,9 +145,9 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-bash check_mandatory_files.sh $input_file
+bash lib/check_mandatory_files.sh $input_file
 
-bash check_dependencies.sh bedtools
+bash lib/check_dependencies.sh bedtools
 
 if [ ! $output_dir ]; then
 	output_dir=$(dirname $input_file)
@@ -180,7 +180,7 @@ if [ $positional = true ]; then
 else
 
 
-	bash check_mandatory_files.sh $database
+	bash lib/check_mandatory_files.sh $database
 
 	if [ -f $database".length" ]; then
 		echo "Found length file for" $(basename $database)

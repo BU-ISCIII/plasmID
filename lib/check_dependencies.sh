@@ -25,7 +25,7 @@ Check_dependencies Short function to evaluate if files exist
 
 usage : $0 <program_name1> [program_name2] ...
 
-example: check_dependencies.sh foo bar
+example: lib/check_dependencies.sh foo bar
 
 EOF
 }

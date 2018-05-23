@@ -118,9 +118,9 @@ shift $((OPTIND-1))
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
 
-bash check_mandatory_files.sh $input_file
+bash lib/check_mandatory_files.sh $input_file
 
-bash check_dependencies.sh samtools
+bash lib/check_dependencies.sh samtools
 
 
 if [ ! $output_dir ]; then

@@ -158,7 +158,7 @@ shift $((OPTIND-1))
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
 
-bash lib/check_dependencies.sh spades.py
+bash lib/lib/check_dependencies.sh spades.py
 
 
 if [ ! $directory_reads ]; then

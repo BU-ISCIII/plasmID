@@ -137,9 +137,9 @@ shift $((OPTIND-1))
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
 
-bash check_dependencies.sh bowtie2-build bowtie2
+bash lib/check_dependencies.sh bowtie2-build bowtie2
 
-bash check_mandatory_files.sh $database $R1 $R2
+bash lib/check_mandatory_files.sh $database $R1 $R2
 
 if [ ! $sample ]; then
 	echo "ERROR: please, provide a sample name"

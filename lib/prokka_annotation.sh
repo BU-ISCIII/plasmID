@@ -145,9 +145,9 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-bash check_mandatory_files.sh $input_file
+bash lib/check_mandatory_files.sh $input_file
 
-bash check_dependencies.sh prokka
+bash lib/check_dependencies.sh prokka
 
 if [ ! $prefix ]; then
 	echo "please provide a prefix"

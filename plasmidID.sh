@@ -64,6 +64,7 @@ usage : $0 [-1 <R1>] [-2 <R2>] <-d database(fasta)> <-s sample_name> [-g group_n
 	
 	Additional options:
 
+	-M | --memory	<int>	max memory allowed to use
 	-T | --threads	<int>	number of threads
 	-v | --version		version
 	-h | --help		display usage message
@@ -103,12 +104,14 @@ do
 		--contig)	set -- "$@"	-c ;;
 		--annotate)	set -- "$@"	-a ;;
 ##PIPELINE
+		--only-reconstruct)	set -- "$@" -R ;;
 		--coverage-cutoff)	set -- "$@"	-C ;;
 		--coverage-summary)	set -- "$@"	-S ;;
 		--cluster)	set -- "$@"	-f ;;
 		--alignment-percentage)	set -- "$@"	-l ;;
 		--length-total)	set -- "$@"	-L ;;
-##ADDITIONAL
+##ADDITIONAL-
+		--memory)		set -- "$@"	-M ;;
 		--threads)		set -- "$@"	-T ;;
        	--help)    	set -- "$@" -h ;;
        	--version) 	set -- "$@" -v ;;
@@ -119,6 +122,7 @@ done
 
 #DECLARE FLAGS AND VARIABLES
 threads=1
+max_memory=4000
 cwd="$(pwd)"
 group="NO_GROUP"
 database="Database"
@@ -128,10 +132,12 @@ cluster_cutoff=80
 alignment_percentage=50
 R1="R1_file"
 R2="R2_file"
+only_reconstruct=false
+include_assembly=true
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
-options=":1:2:d:s:g:c:a:o:C:S:f:l:L:T:vh"
+options=":1:2:d:s:g:c:a:o:R:C:S:f:l:L:T:M:vh"
 while getopts $options opt; do
 	case $opt in
 		1 )
@@ -151,12 +157,17 @@ while getopts $options opt; do
 			;;
 		c)
 			contigs=$OPTARG
+			include_assembly=false
 			;;
 		g)
 			group=$OPTARG
 			;;
 		a )
 			annotation+=($OPTARG)
+			;;
+		R )
+			only_reconstruct=true
+			reconstruct_fasta=$database
 			;;
 		C )
 			coverage_cutoff=$OPTARG
@@ -176,6 +187,9 @@ while getopts $options opt; do
         T ) 
 			threads=$OPTARG
             ;;
+        M)
+			max_memory=$OPTARG
+			;;
         o)
 			output_dir=$OPTARG
 			;;
@@ -210,7 +224,10 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-.lib/check_mandatory_files $r1_file $r2_file $database 
+reconstruct_fasta=$group/$sample/mapping/$sample".coverage_adapted_filtered_"$coverage_cutoff"_term.fasta"_$cluster_cutoff
+contigs=$group/$sample/assembly/scaffolds.fasta
+<<C
+lib/check_mandatory_files.sh $r1_file $r2_file $database 
 
 if [ ! $sample ]; then
 	echo "ERROR: please, provide a sample name"
@@ -227,77 +244,90 @@ else
 	mkdir -p $output_dir
 fi
 
+if [ $only_reconstruct = false ]; then
+
+	reconstruct_fasta=$group/$sample/mapping/$sample".coverage_adapted_filtered_"$coverage_cutoff"_term.fasta"_$cluster_cutoff
 
 ####TRIMMING#################################################################
 #############################################################################
+	filestrimmed=$(ls $group/$sample/trimmed/$sample_*paired.fastq.qz 2> /dev/null | wc -l)
 
-.lib/quality_trim.sh -1 $r1_file -2 $r2_file -s $sample -g $group -T $threads
+	if [ "filestrimmed" = "4" ];then
+		echo "Found an trimmed files for this sample" $sample;
+		echo "Omitting trimming"
+	else
+		echo "####TRIMMING################################################################"
+		lib/quality_trim.sh -1 $r1_file -2 $r2_file -s $sample -g $group -T $threads
+	fi
 
-#group/sample/trimmed/sample_1_paired.fastq.gz
-#group/sample/trimmed/sample_1_unpaired.fastq.gz
-#group/sample/trimmed/sample_2_paired.fastq.gz
-#group/sample/trimmed/sample_2_unpaired.fastq.gz
-
+	#group/sample/trimmed/sample_1_paired.fastq.gz
+	#group/sample/trimmed/sample_1_unpaired.fastq.gz
+	#group/sample/trimmed/sample_2_paired.fastq.gz
+	#group/sample/trimmed/sample_2_unpaired.fastq.gz
 
 ####ASSEMLY##################################################################
 #############################################################################
 
-.lib/spades_assembly.sh -q $group/$sample/trimmed/ -T $threads
+	if [ $include_assembly = true ]; then
+		echo "####ASSEMBLY################################################################"
+		lib/spades_assembly.sh -q $group/$sample/trimmed/ -c -T $threads
+		contigs=$group/$sample/assembly/scaffolds.fasta
+	fi
 
-#group/sample/assembly/scaffolds.fasta
+	#group/sample/assembly/scaffolds.fasta
 
 ####MAPPING##################################################################
 #############################################################################
-
-.lib/bowtie_mapper.sh -d $database \
- -g $group \
- -s $sample \
- -1 $group/$sample/trimmed/$sample"_1_paired.fastq.gz" \
- -2 $group/$sample/trimmed/$sample"_2_paired.fastq.gz"
+	if [ -f $group/$sample/mapping/$sample.sorted.bam -a -f $group/$sample/mapping/$sample.sorted.bam.bai -o -f $group/$sample/mapping/$sample.sam ];then
+		echo "Found a mapping file for sample" $sample;
+		echo "Omitting mapping"
+	else
+		echo "####MAPPING#################################################################"
+		lib/bowtie_mapper.sh -d $database \
+	 	-g $group \
+	 	-s $sample \
+	 	-1 $group/$sample/trimmed/$sample"_1_paired.fastq.gz" \
+	 	-2 $group/$sample/trimmed/$sample"_2_paired.fastq.gz"
 
  #group/sample/mapping/sample.sam
 
- .lib/sam_to_bam.sh -i $group/$sample/mapping/$sample.sam
+	 	lib/sam_to_bam.sh -i $group/$sample/mapping/$sample.sam
 
  #group/sample/mapping/sample.bam
  #group/sample/mapping/sample.bam.bai
-
+ 	fi
 
 ####COVERAGE FILTERING#######################################################
 #############################################################################
-
-
- .lib/get_coverage.sh -i $group/$sample/mapping/$sample".sorted.bam" -d $database
-
+	if [ -f $group/$sample/mapping/$sample".coverage" ];then \
+		echo "Found a coverage file for sample" $sample;
+		echo "Omitting coverage calculation"
+	else
+		echo "####COVERAGE FILTERING########################################################"
+ 		lib/get_coverage.sh -i $group/$sample/mapping/$sample".sorted.bam" -d $database
+ 	fi
  #group/sample/mapping/sample.coverage
 
- .lib/adapt_filter_coverage.sh -i $group/$sample/mapping/$sample".coverage" -c $coverage_cutoff
+ 	lib/adapt_filter_coverage.sh -i $group/$sample/mapping/$sample".coverage" -c $coverage_cutoff
 
  #sample.coverage_adapted
  #sample.coverage_adapted_filtered_80
 
-
-
-
-
-
-
-
-
-
- 
-
-bash filter_fasta.sh -i ../../../REFERENCES/PLASMIDS/plasmid.all.genomic.dec212017.fasta_psi_90 -f group/sample/mapping/sample.coverage_adapted_filtered_50
+	lib/filter_fasta.sh -i $database -f $group/$sample/mapping/$sample".coverage_adapted_filtered_"$coverage_cutoff
 
 #sample.coverage_adapted_filtered_50_term.fasta
 
-bash cdhit_cluster.sh -i group/sample/mapping/sample.coverage_adapted_filtered_50_term.fasta -c 0.8 -M 5000 -T 0
+	lib/cdhit_cluster.sh -i $group/$sample/mapping/$sample".coverage_adapted_filtered_"$coverage_cutoff"_term.fasta" -c $cluster_cutoff -M $max_memory -T $threads
 
-#sample.coverage_adapted_filtered_50_term.fasta_80 >> ARCHIVO FINAL DE PLÁSMIDOS FILTRADO Y CLUSTERIZADO
+#$group/$sample/mapping/$sample".coverage_adapted_filtered_"$coverage_cutoff"_term.fasta"_$cluster_cutoff >> FINAL CLUSTERED AND FILTERED FASTA FILE TO USE AS SCAFFOLD
 ########################################################################################################
+
+#sample.coverage_adapted_filtered_50_term.fasta_80
 #sample.coverage_adapted_filtered_50_term.fasta_80.clstr
 
-bash process_cluster_output.sh -i group/sample/mapping/sample.coverage_adapted_filtered_50_term.fasta_80 -b group/sample/mapping/sample.coverage_adapted -c 50
+	lib/process_cluster_output.sh -i $reconstruct_fasta -b $group/$sample/mapping/$sample".coverage_adapted" -c $coverage_cutoff
+
+fi
 
 #sample.coverage_adapted_clustered
 #sample.coverage_adapted_clustered_percentage
@@ -308,51 +338,49 @@ bash process_cluster_output.sh -i group/sample/mapping/sample.coverage_adapted_f
 ######################## DONE WITH MAPPING AND CLUSTERING #####################################################################################
 ###############################################################################################################################################
 
-bash build_karyotype.sh -i group/sample/mapping/sample.coverage_adapted_clustered -K 50 -k 50 -o group/sample/data
+lib/build_karyotype.sh -i $group/$sample/mapping/$sample".coverage_adapted_clustered" -K $coverage_summary -k $coverage_cutoff -o $group/$sample/data
 
 #group/sample/data
 #sample.karyotype_individual.txt
 #sample.karyotype_individual.txt
 
-./get_coverage.sh -i group/sample/mapping/sample.sorted.bam -p -o group/sample/data/
+lib/get_coverage.sh -i $group/$sample/mapping/$sample".sorted.bam" -p -o $group/$sample/data
 
 #sample.bedgraph
 
-./filter_fasta.sh -i group/sample/data/sample.bedgraph -f group/sample/mapping/sample.coverage_adapted_clustered_ac -G
+lib/filter_fasta.sh -i $group/$sample/data/$sample".bedgraph" -f $group/$sample/mapping/$sample".coverage_adapted_clustered_ac" -G
 
 #sample.bedgraph_term
 
-contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| awk '/'"${sample}"'/' | awk 'NR==1')
-
-/prokka_annotation.sh -i ../../ASSEMBLY/ACIN_first/sample/scaffolds.fasta -p sample -O group/sample/data/ -c
+lib/prokka_annotation.sh -i $contigs -p $sample -o $group/$sample/data -c
 
 #sample.fna
 #sample.gff
+C
 
-
-./blast_align.sh -i group/sample/data/sample.fna -d group/sample/mapping/sample.coverage_adapted_clustered_ac_term.fasta -o group/sample/data/ -p plasmids2
+lib/blast_align.sh -i $group/$sample/data/$sample".fna" -d $reconstruct_fasta -o $group/$sample/data -p plasmids
 
 #sample.plasmids.blast
 
 
-./blast_to_bed.sh -i group/sample/data/sample.plasmids.blast -l 0 -L 500 -d - -q _ -Q r -I
+lib/blast_to_bed.sh -i $group/$sample/data/$sample".plasmids.blast" -l 0 -L 500 -d - -q _ -Q r -I
 
 #sample.plasmids.bed
 
-./blast_to_complete.sh -i group/sample/data/sample.plasmids.blast
+lib/blast_to_complete.sh -i $group/$sample/data/$sample".plasmids.blast"
 
 #sample.plasmids.complete
 
-./blast_to_link.sh -i group/sample/data/sample.plasmids.blast -I
+lib/blast_to_link.sh -i $group/$sample/data/$sample".plasmids.blast" -I
 
 #sample.plasmids.links
 #sample.plasmids.blast.links
 
-./gff_to_bed.sh -i group/sample/data/sample.gff -L -u
+lib/gff_to_bed.sh -i $group/$sample/data/$sample".gff" -L -u
 
 #sample.gff.bed
 
-./coordinate_adapter.sh -i group/sample/data/sample.gff.bed -l group/sample/data/sample.plasmids.blast.links -n 10000
+lib/coordinate_adapter.sh -i $group/$sample/data/$sample".gff.bed" -l $group/$sample/data/$sample".plasmids.blast.links" -n 10000
 
 #sample.gff.coordinates
 
@@ -361,27 +389,27 @@ contigFile=$(find -L $contigDir/ -name "scaffolds.fasta" -type f 2> /dev/null| a
 
 ######################### ABR _ INCLUDE FILENAME
 
-./blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOTICS_PSMP_T/ANALYSIS/PLASMIDID/references/ARGannot.r1.pID.fasta -d group/sample/data/sample.fna -o group/sample/data -p abr -f sample
+lib/blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOTICS_PSMP_T/ANALYSIS/PLASMIDID/references/ARGannot.r1.pID.fasta -d $group/$sample/data/$sample".fna" -o $group/$sample/data -p abr -f $sample
 
 #sample.abr.blast
 
-./blast_to_bed.sh -i group/sample/data/sample.abr.blast -b 95 -l 90 -d _ -D r -q " " -Q r
+lib/blast_to_bed.sh -i $group/$sample/data/$sample".abr.blast" -b 95 -l 90 -d _ -D r -q " " -Q r
 
 #sample.abr.bed
 
-./coordinate_adapter.sh -i group/sample/data/sample.abr.bed -l group/sample/data/sample.plasmids.blast.links -u
+lib/coordinate_adapter.sh -i $group/$sample/data/$sample".abr.bed" -l $group/$sample/data/$sample".plasmids.blast.links" -u
 
 #sample.abr.coordinates
 
 ###################### INC
 
-./blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOTICS_PSMP_T/ANALYSIS/PLASMIDID/references/plasmidFinder_01_26_2018.fsa -d group/sample/data/sample.fna -o group/sample/data -p inc -f sample
+lib/blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOTICS_PSMP_T/ANALYSIS/PLASMIDID/references/plasmidFinder_01_26_2018.fsa -d $group/$sample/data/$sample".fna" -o $group/$sample/data -p inc -f $sample
 
 #sample.inc.blast
 
-/blast_to_bed.sh -i group/sample/data/sample.inc.blast -b 95 -l 80 -d _ -D r -q _ -Q l
+lib/blast_to_bed.sh -i $group/$sample/data/$sample".inc.blast" -b 95 -l 80 -d _ -D r -q _ -Q l
 #sample.inc.bed
 
-./coordinate_adapter.sh -i group/sample/data/sample.inc.bed -l group/sample/data/sample.plasmids.blast.links -u
+lib/coordinate_adapter.sh -i $group/$sample/data/$sample".inc.bed" -l $group/$sample/data/$sample".plasmids.blast.links" -u
 
 #sample.inc.coordinates

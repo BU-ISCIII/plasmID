@@ -139,9 +139,9 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-bash check_mandatory_files.sh $r1_file $r2_file
+bash lib/check_mandatory_files.sh $r1_file $r2_file
 
-bash check_dependencies.sh java
+bash lib/check_dependencies.sh java
 
 if [ ! $sample ]; then
 	echo "Please include a sample name"

@@ -25,7 +25,7 @@ Check_mandatory_files Short function to evaluate if files exist
 
 usage : $0 <file1> [file2] ...
 
-example: check_mandatory_files.sh foo.txt bar.fasta
+example: lib/check_mandatory_files.sh foo.txt bar.fasta
 
 EOF
 }

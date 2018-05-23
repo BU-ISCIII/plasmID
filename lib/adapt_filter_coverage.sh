@@ -111,7 +111,7 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-bash check_mandatory_files.sh $input_file
+bash lib/check_mandatory_files.sh $input_file
 
 suffix="_adapted_filtered_"$coverage_cutoff_input
 coverage_cutoff=$(echo "(1 - ($coverage_cutoff_input/100))" | bc -l)

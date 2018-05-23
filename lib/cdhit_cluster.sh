@@ -64,7 +64,7 @@ usage : $0 <-i inputfile(FASTA)> [-o <directory>] [-n <filename>] [-c <percentag
 		[-T <threads>] [-g group_name] [-s <int>] [-M <int>][-C <(0|1)>] [-G <(0|1)>] [-b <blast_prog>] [p] [-v] [-h]
 
 	-i input file in FASTA format
-	-c percentage threshold to cluster, default 0.8
+	-c percentage threshold to cluster, default 80
 	-M max available memory (Mbyte), default 400
 	-n file name
 	-s length difference cutoff, default 0.8
@@ -80,7 +80,7 @@ usage : $0 <-i inputfile(FASTA)> [-o <directory>] [-n <filename>] [-c <percentag
 
 Output directory is the same as input directory
 
-example: cdhit_cluster -i ecoli.fasta -c 0.9 -M 50000 -T 0
+example: cdhit_cluster -i ecoli.fasta -c 90 -M 50000 -T 0
 		 
 
 EOF
@@ -120,7 +120,7 @@ while getopts $options opt; do
 			;;
 		
 		c )
-			cluster_cutoff=$OPTARG
+			cluster_cutoff_input=$OPTARG
 			;;
 		g)
 			group=$OPTARG
@@ -180,9 +180,9 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
-bash check_mandatory_files.sh $input_file
+bash lib/check_mandatory_files.sh $input_file
 
-bash check_dependencies.sh cd-hit-est psi-cd-hit.pl
+bash lib/check_dependencies.sh cd-hit-est psi-cd-hit.pl
 
 
 
@@ -190,17 +190,17 @@ bash check_dependencies.sh cd-hit-est psi-cd-hit.pl
 #according to clustering percentage
 
 
-cluster_percentage=$(echo "$cluster_cutoff * 100"|bc -l)
-cluster_percentage=${cluster_percentage%.*} #Remove float value
+cluster_cutoff=$(echo "$cluster_cutoff_input / 100" | bc -l | sed 's/0\{1,\}$//')
+#cluster_cutoff=${cluster_cutoff%.*} #Remove float value
 
 
-if [[ "$cluster_percentage" -gt 70  &&  "$cluster_percentage" -le 100 ]]; then
+if [[ "$cluster_cutoff_input" -gt 70  &&  "$cluster_cutoff_input" -le 100 ]]; then
 	word_size=5
-elif [[ "$cluster_percentage" -gt 60  &&  "$cluster_percentage" -le 70 ]]; then
+elif [[ "$cluster_cutoff_input" -gt 60  &&  "$cluster_cutoff_input" -le 70 ]]; then
 	word_size=4
-elif [[ "$cluster_percentage" -gt 50  &&  "$cluster_percentage" -le 60 ]]; then
+elif [[ "$cluster_cutoff_input" -gt 50  &&  "$cluster_cutoff_input" -le 60 ]]; then
 	word_size=3
-elif [[ "$cluster_percentage" -ge 40  &&  "$cluster_percentage" -le 50 ]]; then
+elif [[ "$cluster_cutoff_input" -ge 40  &&  "$cluster_cutoff_input" -le 50 ]]; then
 	word_size=2
 else
 	echo "please introduce a valid cluster percentage value between 0.4 and 1"
@@ -223,35 +223,35 @@ if [ ! $file_name ]; then
 	echo "filename is" $file_name
 fi
 
-
+echo "#####################################Cluster cutoff" $cluster_cutoff "###############iput" $cluster_cutoff_input
 ##CD-HIT EXECUTION
 
 echo "$(date)"
-echo "Clustering sequences with identity" $cluster_percentage"% or higher"
+echo "Clustering sequences with identity" $cluster_cutoff_input"% or higher"
 echo "Using" $cd_hit_command "with file" $input_file
 seq_number_prev_clstr=$(cat $input_file | grep ">" | wc -l)
 
 cd $(dirname $input_file)
 
-if [ -f $output_dir/$file_name""_""$cluster_percentage ]; then \
+if [ -f $output_dir/$file_name""_""$cluster_cutoff_input ]; then \
 	echo "Found a clustered file for sample" $file_name;
 	echo "Omitting clustering process calculation"
 	exit 1
 else
 	if [ $cd_hit_command  == "psi-cd-hit.pl" ]; then 
-		$cd_hit_command -i $(basename $input_file) -o $file_name""_""$cluster_percentage -c $cluster_cutoff -G $global_psi_cd_hit -g 1 -prog $psi_cd_hit_program -circle $is_circle
+		$cd_hit_command -i $(basename $input_file) -o $file_name""_""$cluster_cutoff_input -c $cluster_cutoff -G $global_psi_cd_hit -g 1 -prog $psi_cd_hit_program -circle $is_circle
 	
 	else
 
-		$cd_hit_command -i $(basename $input_file) -o $file_name""_""$cluster_percentage -c $cluster_cutoff -n $word_size -d 0 -s $length_cutoff -B 1 -M $max_memory -T $threads
+		$cd_hit_command -i $(basename $input_file) -o $file_name""_""$cluster_cutoff_input -c $cluster_cutoff -n $word_size -d 0 -s $length_cutoff -B 1 -M $max_memory -T $threads
 	fi
 fi
 
-seq_number_post_clstr=$(cat $$file_name""_""$cluster_percentage | grep ">" | wc -l)
+seq_number_post_clstr=$(cat $file_name""_""$cluster_cutoff_input | grep ">" | wc -l)
 
 echo "$(date)"
-echo "done Clustering sequences with identity" $cluster_percentage"% or higher"
-echo "fasta file can be found in" $output_dir/$file_name""_""$cluster_percentage
+echo "DONE Clustering sequences with identity" $cluster_cutoff_input"% or higher"
+echo "fasta file can be found in" $output_dir/$file_name""_""$cluster_cutoff_input
 echo "Previous number of sequences=" $seq_number_prev_clstr
 echo "Number of sequences after clustering=" $seq_number_post_clstr
 cd $cwd
