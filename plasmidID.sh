@@ -356,7 +356,7 @@ lib/prokka_annotation.sh -i $contigs -p $sample -o $group/$sample/data -c
 
 #sample.fna
 #sample.gff
-C
+
 
 lib/blast_align.sh -i $group/$sample/data/$sample".fna" -d $reconstruct_fasta -o $group/$sample/data -p plasmids
 
@@ -413,3 +413,7 @@ lib/blast_to_bed.sh -i $group/$sample/data/$sample".inc.blast" -b 95 -l 80 -d _ 
 lib/coordinate_adapter.sh -i $group/$sample/data/$sample".inc.bed" -l $group/$sample/data/$sample".plasmids.blast.links" -u
 
 #sample.inc.coordinates
+
+C
+
+lib/draw_circos_images.sh $group $sample
