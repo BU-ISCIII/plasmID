@@ -117,6 +117,7 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
 
 bash lib/check_mandatory_files.sh $input_file
 
@@ -182,3 +183,5 @@ if [ -f $output_dir/$sample.bam ];then \
 	rm $output_dir/$sample.bam
 	
 fi
+
+echo -e "\n"

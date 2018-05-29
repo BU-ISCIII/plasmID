@@ -129,6 +129,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
 
 
@@ -215,4 +217,5 @@ else
 
 	echo "Previous number of sequences=" $seq_number_prev
 	echo "Post number of sequences=" $seq_number_post
+	echo -e "\n"
 fi

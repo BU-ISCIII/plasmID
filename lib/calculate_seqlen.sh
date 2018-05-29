@@ -106,6 +106,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
 
 if [ ! $output_dir ]; then

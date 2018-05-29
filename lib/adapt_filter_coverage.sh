@@ -111,7 +111,10 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
+
 
 suffix="_adapted_filtered_"$coverage_cutoff_input
 coverage_cutoff=$(echo "(1 - ($coverage_cutoff_input/100))" | bc -l)
@@ -159,4 +162,4 @@ awk '
 echo "$(date)"
 echo "Done filtering sequences with" $coverage_cutoff_input"% and greater coverage"
 echo "Those sequences can be found at" $input_file$suffix
-echo $(cat $input_file$suffix | wc -l) mapped equals or more than $coverage_cutoff_input
+echo -e $(cat $input_file$suffix | wc -l) mapped equals or more than $coverage_cutoff_input "\n"

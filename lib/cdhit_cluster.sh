@@ -180,6 +180,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
 
 bash lib/check_dependencies.sh cd-hit-est psi-cd-hit.pl
@@ -253,5 +255,5 @@ echo "$(date)"
 echo "DONE Clustering sequences with identity" $cluster_cutoff_input"% or higher"
 echo "fasta file can be found in" $output_dir/$file_name""_""$cluster_cutoff_input
 echo "Previous number of sequences=" $seq_number_prev_clstr
-echo "Number of sequences after clustering=" $seq_number_post_clstr
+echo -e "Number of sequences after clustering=" $seq_number_post_clstr "\n"
 cd $cwd

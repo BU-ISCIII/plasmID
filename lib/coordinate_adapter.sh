@@ -119,6 +119,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file $link_file
 
 if [ ! $output_dir ]; then
@@ -179,4 +181,4 @@ rm $output_dir/$file_name".coordinates.negatives"
 
 
 echo "$(date)"
-echo "Coordinates adapted to file" $output_dir/$file_name".coordinates"
+echo -e "Coordinates adapted to file" $output_dir/$file_name".coordinates" "\n"

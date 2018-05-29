@@ -136,6 +136,7 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
 
 bash lib/check_dependencies.sh bowtie2-build bowtie2
 
@@ -195,6 +196,6 @@ else
 	-x $database
 
 	echo "$(date)"
-	echo "DONE Mapping $sample of $group Group"
+	echo -e "DONE Mapping $sample of $group Group" "\n"
 fi
 

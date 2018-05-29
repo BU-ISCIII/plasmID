@@ -115,12 +115,12 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
 
 suffix="_clustered"
 coverage_cutoff=$(echo "(1 - ($coverage_cutoff_input/100))" | bc -l)
-
-echo "coverage" $coverage_cutoff
 
 if [ ! $output_dir ]; then
 	output_dir=$(dirname $input_file)
@@ -150,17 +150,17 @@ done > $output_dir/$coverage_name$suffix
 
 
 awk '
-	{if ($2 == 0 && $5 < '"${coverage_cutoff}"')
+	{if ($2 == 0 && $5 =< '"${coverage_cutoff}"')
 		{print $1}}
 	' $output_dir/$coverage_name$suffix > $output_dir/$coverage_name$suffix"_ac"
 
 
 awk '
-	{if ($2 == 0 && $5 < '"${coverage_cutoff}"')
+	{if ($2 == 0 && $5 =< '"${coverage_cutoff}"')
 	 	{print $1, ((1 - $5)*100)}
 	}
 	' $output_dir/$coverage_name$suffix > $output_dir/$coverage_name$suffix"_percentage"
 
 echo "$(date)"
 echo "DONE extracting coverage info from clustered sequences in" $file_name
-echo "Info can be found at" $coverage_name$suffix"_*"
+echo -e "Info can be found at" $coverage_name$suffix"_*" "\n"

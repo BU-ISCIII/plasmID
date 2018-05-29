@@ -157,6 +157,7 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
 
 bash lib/check_dependencies.sh spades.py
 
@@ -232,7 +233,7 @@ if [ $clean_mode = true ]; then
 	echo "DONE removing unwanted folders"
 fi
 
-
+echo -e "\n"
 
 
 

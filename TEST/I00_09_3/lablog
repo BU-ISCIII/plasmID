@@ -1,0 +1,1 @@
+ ./plasmidID.sh -1 ../../../ANALYSIS/TRIMMED/plasmidid/I00_09/I00_09_1_paired.fastq.gz -2 ../../../ANALYSIS/TRIMMED/plasmidid/I00_09/I00_09_2_paired.fastq.gz -d ../../../REFERENCES/PLASMIDS/plasmid.all.genomic.dec212017.fasta_psi_90 -c TEST/O00_09_2/data/O00_09_2.fna -C 70 -s I00_09_3 -g TEST

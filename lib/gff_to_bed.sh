@@ -130,6 +130,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
 
 if [ ! $output_dir ]; then
@@ -206,3 +208,4 @@ fi
 echo "$(date)"
 echo "DONE getting bed file from GFF"
 echo "File can be found at" $output_dir/$file_name".bed"
+echo -e "\n"

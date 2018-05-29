@@ -123,6 +123,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
 
 coverage_cutoff_summary=$(echo "(1 - ($coverage_cutoff_summary_percentage/100))" | bc -l)
@@ -171,4 +173,4 @@ echo "$(date)"
 echo "Done Obtain list of cromosomes (idiogram) for CIRCOS karyotype file"
 echo "Files can be found at" $output_dir
 echo $(cat $output_dir/$file_name".karyotype_summary.txt" | wc -l) "sequences will be displayed on summary image"
-echo $(cat $output_dir/$file_name".karyotype_individual.txt" | wc -l) "images will be created individually"
+echo -e $(cat $output_dir/$file_name".karyotype_individual.txt" | wc -l) "images will be created individually" "\n"

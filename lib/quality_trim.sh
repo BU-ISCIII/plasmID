@@ -139,6 +139,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $r1_file $r2_file
 
 bash lib/check_dependencies.sh java
@@ -187,7 +189,7 @@ echo $output_dir/$sample"_1_paired.fastq.gz"
 echo $output_dir/$sample"_1_unpaired.fastq.gz"
 echo $output_dir/$sample"_2_paired.fastq.gz"
 echo $output_dir/$sample"_2_unpaired.fastq.gz"
-
+echo -e "\n"
 
 
 

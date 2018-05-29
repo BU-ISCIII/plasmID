@@ -60,6 +60,7 @@ usage : $0 [-1 <R1>] [-2 <R2>] <-d database(fasta)> <-s sample_name> [-g group_n
 	-l | --alignment-percentage <int>	minimun length percentage aligned for a contig to annotate
 	-L | --length-total	<int>	minimun alignment length to filter blast analysis
 
+	--no-trim	Reads supplied will not be quality trimmed
 	--only-reconstruct	Database supplied will not be filtered and all sequences will be used as scaffold 
 	
 	Additional options:
@@ -70,6 +71,7 @@ usage : $0 [-1 <R1>] [-2 <R2>] <-d database(fasta)> <-s sample_name> [-g group_n
 	-h | --help		display usage message
 
 example: ./plasmidID.sh -1 ecoli_R1.fastq.gz -2 ecoli_R2.fastq.gz -d database.fasta -s ECO_553 -G ENTERO
+		./plasmidID.sh -1 ecoli_R1.fastq.gz -2 ecoli_R2.fastq.gz -d database.fasta -c scaffolds.fasta -C 60 -s ECO_60 -G ENTERO
 
 EOF
 }
@@ -105,6 +107,7 @@ do
 		--annotate)	set -- "$@"	-a ;;
 ##PIPELINE
 		--only-reconstruct)	set -- "$@" -R ;;
+		--no-trim)	set -- "$@" -t ;;
 		--coverage-cutoff)	set -- "$@"	-C ;;
 		--coverage-summary)	set -- "$@"	-S ;;
 		--cluster)	set -- "$@"	-f ;;
@@ -129,15 +132,16 @@ database="Database"
 coverage_cutoff=80
 coverage_summary=90
 cluster_cutoff=80
-alignment_percentage=50
+alignment_percentage=30
 R1="R1_file"
 R2="R2_file"
+no_trim=false
 only_reconstruct=false
 include_assembly=true
 
 #PARSE VARIABLE ARGUMENTS WITH getops
 #common example with letters, for long options check longopts2getopts.sh
-options=":1:2:d:s:g:c:a:o:R:C:S:f:l:L:T:M:vh"
+options=":1:2:d:s:g:c:a:o:C:S:f:l:L:T:M:Rtvh"
 while getopts $options opt; do
 	case $opt in
 		1 )
@@ -164,6 +168,9 @@ while getopts $options opt; do
 			;;
 		a )
 			annotation+=($OPTARG)
+			;;
+		t)
+			no_trim=true
 			;;
 		R )
 			only_reconstruct=true
@@ -225,7 +232,9 @@ shift $((OPTIND-1))
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
 reconstruct_fasta=$group/$sample/mapping/$sample".coverage_adapted_filtered_"$coverage_cutoff"_term.fasta"_$cluster_cutoff
-contigs=$group/$sample/assembly/scaffolds.fasta
+#contigs=$group/$sample/assembly/scaffolds.fasta
+
+
 <<C
 lib/check_mandatory_files.sh $r1_file $r2_file $database 
 
@@ -250,14 +259,27 @@ if [ $only_reconstruct = false ]; then
 
 ####TRIMMING#################################################################
 #############################################################################
-	filestrimmed=$(ls $group/$sample/trimmed/$sample_*paired.fastq.qz 2> /dev/null | wc -l)
+	
+	if [ $no_trim = false ]; then
 
-	if [ "filestrimmed" = "4" ];then
-		echo "Found an trimmed files for this sample" $sample;
-		echo "Omitting trimming"
+		r1_file_mapping=$group/$sample/trimmed/$sample"_1_paired.fastq.gz"
+		r2_file_mapping=$group/$sample/trimmed/$sample"_2_paired.fastq.gz"
+
+
+
+		filestrimmed=$(ls $group/$sample/trimmed/$sample_*paired.fastq.qz 2> /dev/null | wc -l)
+
+		if [ "filestrimmed" = "4" ];then
+			echo "Found an trimmed files for this sample" $sample;
+			echo "Omitting trimming"
+		else
+			echo "####TRIMMING################################################################"
+			lib/quality_trim.sh -1 $r1_file -2 $r2_file -s $sample -g $group -T $threads
+		fi
 	else
-		echo "####TRIMMING################################################################"
-		lib/quality_trim.sh -1 $r1_file -2 $r2_file -s $sample -g $group -T $threads
+
+		r1_file_mapping=$r1_file
+		r2_file_mapping=$r2_file
 	fi
 
 	#group/sample/trimmed/sample_1_paired.fastq.gz
@@ -286,8 +308,8 @@ if [ $only_reconstruct = false ]; then
 		lib/bowtie_mapper.sh -d $database \
 	 	-g $group \
 	 	-s $sample \
-	 	-1 $group/$sample/trimmed/$sample"_1_paired.fastq.gz" \
-	 	-2 $group/$sample/trimmed/$sample"_2_paired.fastq.gz"
+	 	-1 $r1_file_mapping \
+	 	-2 $r2_file_mapping
 
  #group/sample/mapping/sample.sam
 
@@ -337,6 +359,8 @@ fi
 ###############################################################################################################################################
 ######################## DONE WITH MAPPING AND CLUSTERING #####################################################################################
 ###############################################################################################################################################
+C
+echo "####CONTIG and ANNOTATON########################################################"
 
 lib/build_karyotype.sh -i $group/$sample/mapping/$sample".coverage_adapted_clustered" -K $coverage_summary -k $coverage_cutoff -o $group/$sample/data
 
@@ -344,16 +368,24 @@ lib/build_karyotype.sh -i $group/$sample/mapping/$sample".coverage_adapted_clust
 #sample.karyotype_individual.txt
 #sample.karyotype_individual.txt
 
-lib/get_coverage.sh -i $group/$sample/mapping/$sample".sorted.bam" -p -o $group/$sample/data
-
+if [ -f $group/$sample/data/$sample".bedgraph" ];then
+	echo "Found a coverage file for sample" $sample;
+	echo "Omitting coverage calculation"
+else
+	lib/get_coverage.sh -i $group/$sample/mapping/$sample".sorted.bam" -p -o $group/$sample/data
+fi
 #sample.bedgraph
 
 lib/filter_fasta.sh -i $group/$sample/data/$sample".bedgraph" -f $group/$sample/mapping/$sample".coverage_adapted_clustered_ac" -G
 
 #sample.bedgraph_term
 
-lib/prokka_annotation.sh -i $contigs -p $sample -o $group/$sample/data -c
-
+if [ -f $group/$sample/data/$sample".fna" -a -f $group/$sample/data/$sample".gff" ];then
+	echo "Found annotations files for sample" $sample;
+	echo "Omitting automatic annotation"
+else
+	lib/prokka_annotation.sh -i $contigs -p $sample -o $group/$sample/data -c
+fi
 #sample.fna
 #sample.gff
 
@@ -380,11 +412,12 @@ lib/gff_to_bed.sh -i $group/$sample/data/$sample".gff" -L -u
 
 #sample.gff.bed
 
-lib/coordinate_adapter.sh -i $group/$sample/data/$sample".gff.bed" -l $group/$sample/data/$sample".plasmids.blast.links" -n 10000
+lib/coordinate_adapter.sh -i $group/$sample/data/$sample".gff.bed" -l $group/$sample/data/$sample".plasmids.blast.links" -n 5000
 
 #sample.gff.coordinates
 
 
+echo "####SPECIFIC ANNOTATON########################################################"
 
 
 ######################### ABR _ INCLUDE FILENAME
@@ -393,7 +426,7 @@ lib/blast_align.sh -i /processing_Data/bioinformatics/research/20160530_ANTIBIOT
 
 #sample.abr.blast
 
-lib/blast_to_bed.sh -i $group/$sample/data/$sample".abr.blast" -b 95 -l 90 -d _ -D r -q " " -Q r
+lib/blast_to_bed.sh -i $group/$sample/data/$sample".abr.blast" -b 100 -l 90 -d _ -D r -q " " -Q r
 
 #sample.abr.bed
 
@@ -414,6 +447,6 @@ lib/coordinate_adapter.sh -i $group/$sample/data/$sample".inc.bed" -l $group/$sa
 
 #sample.inc.coordinates
 
-C
+
 
 lib/draw_circos_images.sh $group $sample

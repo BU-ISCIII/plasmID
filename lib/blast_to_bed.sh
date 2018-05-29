@@ -157,6 +157,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
 
 
@@ -219,7 +221,7 @@ awk '
 	{OFS="\t"
 	split($2, database_name, "'"${database_delimiter}"'")
 	split($1, query_name, "'"${query_delimiter}"'")}
-	(($3 > '"${blast_id_cutoff}"')&&(($4/$13) > '"${blast_len_percentage_value}"')&&($4 > '"${blast_len_alignment}"')) \
+	(($3 >= '"${blast_id_cutoff}"')&&(($4/$13) >= '"${blast_len_percentage_value}"')&&($4 >= '"${blast_len_alignment}"')) \
 	{print database_name['"$database_field"'], $9, $10, query_name['"$query_field"']'"$id_output"'}
 	' \
 > $output_dir/$file_name".bed"$suffix
@@ -234,4 +236,4 @@ fi
 
 echo "$(date)"
 echo "DONE adapting blast to bed"
-echo "File can be found at" $output_dir/$file_name".bed"
+echo -e "File can be found at" $output_dir/$file_name".bed" "\n"

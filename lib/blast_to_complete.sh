@@ -149,6 +149,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
 
 
@@ -210,7 +212,7 @@ awk '
 	BEGIN{OFS="\t"}
 	{split($1, query_name, "'"${query_delimiter}"'")
 	split($2,database_name, "'"${database_delimiter}"'")}
-	(($3 > '"${blast_id_cutoff}"') && (($4/$13)>'"${blast_len_percentage_value}"') && (!x[$1$2]++)) \
+	(($3 >= '"${blast_id_cutoff}"') && (($4/$13)>='"${blast_len_percentage_value}"') && (!x[$1$2]++)) \
 	{{isInverted=($10-$9)
 		ext2=($13-$8)}
 		{if (isInverted < 0) 
@@ -244,7 +246,7 @@ awk '
 	BEGIN{OFS="\t"}
 	{split($1, query_name, "'"${query_delimiter}"'")
 	split($2,database_name, "'"${database_delimiter}"'")}
-	(($3 > '"${blast_id_cutoff}"') && (($4/$13)>'"${blast_len_percentage_value}"') && (!x[$2$1]++)) \
+	(($3 >= '"${blast_id_cutoff}"') && (($4/$13)>='"${blast_len_percentage_value}"') && (!x[$2$1]++)) \
 	{{isInverted=($10-$7)
 	ext2=($13-$8)}
 	{if (isInverted < 0) 
@@ -277,4 +279,4 @@ awk '
 
 echo "$(date)"
 echo "DONE adapting blast to complete"
-echo "File can be found at" $output_dir/$file_name".complete"
+echo -e "File can be found at" $output_dir/$file_name".complete" "/n"

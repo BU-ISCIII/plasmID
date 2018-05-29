@@ -150,6 +150,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
 
 
@@ -208,7 +210,7 @@ echo "Min len percentage=" $blast_len_percentage
 ##Have only into account blast entries with a determine blast length
 
 awk '
-	(($4/$13) > '"${blast_len_percentage_value}"') && !contigPlasmid[$1$2]++ \
+	(($4/$13) >= '"${blast_len_percentage_value}"') && !contigPlasmid[$1$2]++ \
 	{print $1$2}
 	' $input_file \
 	> $output_dir/$file_name".dict_length_percentage"
@@ -220,7 +222,7 @@ awk '
 	{split($2, database_name, "'"${database_delimiter}"'")
 	split($1, query_name, "'"${query_delimiter}"'")
 	header=$1$2}
-	{if ((header in contigPlasmid) && ($3>'"${blast_id_cutoff}"') && (($4/$13)>0.05)) 
+	{if ((header in contigPlasmid) && ($3>='"${blast_id_cutoff}"') && (($4/$13)>=0.05)) 
 		print query_name['"$query_field"'], $7,$8,database_name['"$database_field"'],$9,$10'"$id_output"'}' \
 	$output_dir/$file_name".dict_length_percentage" $input_file \
 	> $output_dir/$file_name."blast.links"
@@ -243,4 +245,4 @@ rm $output_dir/$file_name".dict_length_percentage"
 
 echo "$(date)"
 echo "DONE adapting blast to link"
-echo "File can be found at" $output_dir/$file_name".links"
+echo -e "File can be found at" $output_dir/$file_name".links" "\n"

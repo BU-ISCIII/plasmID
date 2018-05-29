@@ -145,6 +145,8 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file
 
 bash lib/check_dependencies.sh prokka
@@ -205,3 +207,5 @@ if [ $clean = true ]; then
 	rm $output_dir/$prefix.ffn
 	rm $output_dir/$prefix.faa
 fi
+
+echo -e "\n"

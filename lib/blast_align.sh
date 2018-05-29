@@ -152,9 +152,12 @@ shift $((OPTIND-1))
 #================================================================
 ##CHECK DEPENDENCIES, MANDATORY FIELDS, FOLDERS AND ARGUMENTS
 
+echo -e "\n#Executing" $0 "\n"
+
 bash lib/check_mandatory_files.sh $input_file $database
 
 bash lib/check_dependencies.sh blastn
+
 
 if [ ! $prefix ]; then
 	echo "please provide a prefix to identify this blast analysis"
@@ -202,4 +205,4 @@ blastn -query $input_file \
 
 echo "$(date)"
 echo "Done blasting" $file_name "agaist" $database_name
-echo "blasted file can be found in" $output_dir/$file_name"."$prefix".blast"
+echo -e "blasted file can be found in" $output_dir/$file_name"."$prefix".blast" "\n"

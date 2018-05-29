@@ -1,6 +1,7 @@
 #!/bin/bash
 
 
+echo -e "\n#Executing" $0 "\n"
 
 group=$1
 sample=$2
@@ -54,7 +55,7 @@ echo "DONE Creating config file for circos in SAMPLE $sample"
 echo "Creating config file for circos in SAMPLE $sample FILE $circosDir/$sample.circos.conf"
 
 awk '{gsub("PLASMID_KARYOTYPE","'$karyotype_file_individual'"); \
-gsub("PLASMID_ANTIBIOTIC_RESISTANCE","'$abrFile'"); \
+gsub("PLASMID_ANTIBIOTIC_RESISTANCE","'$abr_file'"); \
 gsub("PLASMID_REPLISOME_PLASMIDFINDER","'$replisome_file'"); \
 gsub("PLASMID_IS_ISFINDER","'$additional_file'"); \
 gsub("PLASMID_COVERAGE_GRAPH","'$coverage_file'"); \
@@ -62,7 +63,7 @@ gsub("PLASMID_CDS_CONTIG","'$cds_contig_file'"); \
 gsub("PLASMID_CDS_DDBB","'$cdsDdbbFile'"); \
 gsub("PLASMID_CONTIGS_COMPLETE","'$contig_file_complete'"); \
 gsub("PLASMID_CONTIGS","'$contig_file'"); \
-gsub("PLASMID_LINKS","'$linksFile'"); \
+gsub("PLASMID_LINKS","'$links_file'"); \
 gsub("OUTPUTDIR","'$circosDir'"); \
 print $0}' $circos_conf_individual > $circosDir/$sample"_individual.circos.conf"
 
